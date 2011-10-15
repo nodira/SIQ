@@ -15,11 +15,7 @@ public class SymbolicRelation {
 		this.arity = arity; 
 	}
 	
-	public void SymbolicTuple constructNewSymbolicTuple(){
-		SymbolicTuple tt  = new SymbolicTuple(arity); 
-		
-		
-	}
+	
 	
 	
 }

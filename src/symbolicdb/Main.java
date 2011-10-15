@@ -1,5 +1,7 @@
 package symbolicdb;
 
+import constraints.Range;
+
 public class Main {
 
 	public static void main(String[] args){
