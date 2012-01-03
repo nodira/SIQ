@@ -1,0 +1,9 @@
+CREATE TABLE Actor (id VARCHAR(20), fname VARCHAR(20), lname VARCHAR(20), gender VARCHAR(20));
+CREATE TABLE Movie (id VARCHAR(20), name VARCHAR(20), year VARCHAR(20), rank VARCHAR(20));
+CREATE TABLE Directors (id VARCHAR(20), fname VARCHAR(20), lname VARCHAR(20));
+CREATE TABLE Casts (pid VARCHAR(20), mid VARCHAR(20), role VARCHAR(20));
+CREATE TABLE MovieDirectors (did VARCHAR(20), mid VARCHAR(20));
+CREATE TABLE Genre (genre VARCHAR(20), mid VARCHAR(20));
+
+CREATE TABLE Constraints(varName VARCHAR(20), atomicConstraint VARCHAR(20)); 
+CREATE TABLE VarConstraints(var1 VARCHAR(20), var2 VARCHAR(20), atomicConstraint VARCHAR(20)); 
