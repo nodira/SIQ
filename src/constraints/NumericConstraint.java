@@ -3,11 +3,8 @@ package constraints;
 import java.util.ArrayList;
 import java.util.List;
 
-import constraints.Constraint.ComparisonOp;
 
-
-
-public class NumericConstraint {
+public class NumericConstraint implements VariableConstraint{
 	
 	/**
 	 *  = val, != val, >= val, <= val, > val, < val
@@ -24,33 +21,33 @@ public class NumericConstraint {
 	private List<Range> toRanges(){
 		List<Range> ranges = new ArrayList<Range>(); 
 		
-		switch(op){
-		case EQUALS:
+		if(op instanceof ComparisonOp.EQUALS){
 			ranges.add(new Range(value, value, true, true)); 
-			break; 
-		case NOT_EQUALS:
+		}else if(op instanceof ComparisonOp.NOT_EQUALS){
 			ranges.add(new Range(Double.MIN_VALUE, value, true, false)); 
 			ranges.add(new Range(value, Double.MAX_VALUE, false, true)); 
-			break;
-		case GEQ:
+		}else if(op instanceof ComparisonOp.GEQ){
 			ranges.add(new Range(value, Double.MAX_VALUE, true, true)); 
-			break;
-		case LEQ:
+		}else if(op instanceof ComparisonOp.LEQ){
 			ranges.add(new Range(Double.MIN_VALUE, value, true, true)); 
-			break;
-		case GT:
+		}else if(op instanceof ComparisonOp.GT){
 			ranges.add(new Range(value, Double.MAX_VALUE, false, true)); 
-			break;
-		case LT: 
+		}else if(op instanceof ComparisonOp.LT){
 			ranges.add(new Range(Double.MIN_VALUE, value, true, false)); 
-			break;
 		}
 		
 		return ranges; 
 	}
 	
 	///need to test this. 
-	public boolean satisfiableWith(NumericConstraint other){
+	public boolean isSatisfiableWith(VariableConstraint constraint){
+		if(constraint instanceof StringConstraint){
+			return false; 
+		}
+		
+		NumericConstraint other = (NumericConstraint) constraint; 
+		
+		
 		List<Range> ranges = toRanges();
 		List<Range> otherRanges = other.toRanges();
 		
@@ -65,6 +62,24 @@ public class NumericConstraint {
 		return false; 
 	}	
 	
+	public String toString(){
+		return op.getClass().getCanonicalName() + value; 
+	}
+
+	@Override
+	public VariableConstraint negate() {
+		return new NumericConstraint(this.op.negate(), this.value); 
+	}
+
+	@Override
+	public ComparisonOp getOp() {
+		return op; 
+	}
+
+	@Override
+	public String stringValue() {
+		return value + ""; 
+	}
 	
 	
 }
