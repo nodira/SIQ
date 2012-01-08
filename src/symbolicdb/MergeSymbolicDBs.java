@@ -4,8 +4,7 @@ import java.util.HashMap;
 
 public class MergeSymbolicDBs {
 	public static SymbolicDB mergeDBs(SymbolicDB db1, SymbolicDB db2, Mapping mapping){
-		SymbolicDB db = db1.clone(); 
-		
+		SymbolicDB db = new SymbolicDB(db1.schema); 
 		
 		
 		

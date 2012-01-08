@@ -59,7 +59,7 @@ public class SimpleView {
 		this.templates = new ArrayList<Template>(); 
 		
 		RelationSchema tableSchema = schema.get(tableName); 
-		this.viewContent = new SymbolicRelation(tableSchema.size());
+		this.viewContent = new SymbolicRelation(tableSchema);
 		for(String colName : tableSchema.getAttributes()){
 			this.columnNames.add(tableName + "_" + colName); 
 		}
@@ -87,7 +87,7 @@ public class SimpleView {
 			//columns from underlying views
 			for(SimpleView underlyingView : underlyingViews){
 				columnNames.addAll(underlyingView.columnNames); 
-				templates.add(new Template(TemplateTuple.constructTupleWithNewVariables(underlyingView.getViewName(), underlyingView.viewContent.arity)));
+				templates.add(new Template(TemplateTuple.constructTupleWithNewVariables(underlyingView.getViewName(), underlyingView.viewContent.arity())));
 			}
 			
 		
@@ -102,8 +102,8 @@ public class SimpleView {
 			SymbolicRelation x = underlyingView.viewContent;
 			UnaryConstraint c = toUnaryConstraint(pred); 
 			if(c != null){ //indeed a unary constraint
-				SymbolicTuple passingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity);
-				SymbolicTuple failingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity);
+				SymbolicTuple passingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
+				SymbolicTuple failingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
 				
 				Variable passingV = passingTuple.getColumn(c.getColumnName(), underlyingView);
 				passingV.addConstraint(c.getConstraint()); 
@@ -118,7 +118,7 @@ public class SimpleView {
 				BinaryConstraint bc = toBinaryConstraint(pred); 
 				
 				//currently do not support any comparisonop except equals between vars. so: only one template
-				SymbolicTuple passingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity);
+				SymbolicTuple passingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
 				passingTuple.setColumn(underlyingView.columnIndex(bc.getCol2()), passingTuple.getColumn(bc.getCol1(), underlyingView));
 
 				templates.add(new Template(new TemplateTuple(underlyingView.getViewName(), passingTuple))); 
@@ -138,15 +138,21 @@ public class SimpleView {
 			columnNames.add(colName);
 			columnNames.add("countStar"); 
 			
-			SymbolicTuple t1 = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity);
-			SymbolicTuple t2 = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity);
+			SymbolicTuple t1 = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
+			SymbolicTuple t2 = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
 			t2.setColumn(colIndex, t1.getColumn(colIndex));
 			templates.add(new Template(new TemplateTuple(underlyingView.getViewName(), t1),
 						  new TemplateTuple(underlyingView.getViewName(), t2))); 
 			
 		}
 		
-		this.viewContent = new SymbolicRelation(columnNames.size()); 
+		RelationSchema relSchema = new RelationSchema(viewName); 
+		for(String columnName: columnNames){
+			relSchema.addAttribute(columnName); 
+		}
+		
+		
+		this.viewContent = new SymbolicRelation(relSchema); 
 		
 		
 	}
@@ -255,10 +261,10 @@ public class SimpleView {
 			s.append( v.viewName + " "); 
 		}
 		
-		s.append( "\n   ---\n");
-		for(String c : columnNames){
-			s.append(c + "\t") ; 
-		}
+		//s.append( "\n   ---\n");
+		//for(String c : columnNames){
+			//s.append(c + "\t") ; 
+		//}
 		s.append( "\n" + viewContent + "\n  Templates: \n"); 
 		
 		for(Template t : templates){
@@ -366,7 +372,7 @@ public class SimpleView {
 			clone.appliedTemplates.add(oldTemplateToNewTemplate.get(template)); 
 		}
 		
-		clone.viewContent = new SymbolicRelation(this.viewContent.arity);
+		clone.viewContent = new SymbolicRelation(this.viewContent.relationSchema());
 		for(SymbolicTuple t : this.viewContent.getTuples()){
 			SymbolicTuple tClone = new SymbolicTuple(this.viewContent, t.getArity());
 			for(int i =0 ; i<t.getArity(); i++){
@@ -426,6 +432,11 @@ public class SimpleView {
 			}
 		}
 	}
+	
+	public SymbolicRelation getSymbolicRelation(){
+		return viewContent; 
+	}
+	
 	
 	
 	

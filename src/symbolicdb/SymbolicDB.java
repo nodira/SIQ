@@ -10,60 +10,42 @@ import edu.washington.db.cqms.common.sqlparser.DBSchema;
 import edu.washington.db.cqms.common.sqlparser.RelationSchema;
 
 public class SymbolicDB {
-	Hashtable<String, SymbolicRelation> relationNameToRelation = new Hashtable<String, SymbolicRelation>(); 
 	List<SymbolicRelation> relations = new ArrayList<SymbolicRelation>(); 
 	DBSchema schema; 
 	
-	
 	public SymbolicDB(DBSchema schema){
 		this.schema = schema; 
-		//create empty symbolic relation for each table
-		for(RelationSchema relSchema : schema.getRelations()){
-			SymbolicRelation rel = new SymbolicRelation(relSchema.size());
-			relations.add(rel);
-			relationNameToRelation.put(relSchema.getRelationName(), rel); 
-		}
-	}
-	
-	public SymbolicDB clone(){
-		HashMap<Variable, Variable> varToNewVar = new HashMap<Variable, Variable>(); 
-		SymbolicDB clone = new SymbolicDB(this.schema);
-		
-		clone.relations = new ArrayList<SymbolicRelation>(); 
-		for(String relName: this.relationNameToRelation.keySet()){
-			SymbolicRelation relClone = this.relationNameToRelation.get(relName).cloneAccordingToMap(varToNewVar); 
-			clone.relations.add(relClone);
-			clone.relationNameToRelation.put(relName, relClone); 
-		}
-		
-		return clone; 
 	}
 
-	
+	public void addSymbolicRelation(SymbolicRelation rel){
+		this.relations.add(rel); 
+	}
 	
 	public static SymbolicDB constructDB(SimpleView lastView){
 		SymbolicDB db = new SymbolicDB(lastView.schema);
 		
 		//find base tables
-		
-		
-		
-		
-		
-		
-		//copy over SymbolicRelations? 
-		
-		//dont we need names of the relations too? maybe not? 
-		
-		
-		
-		
-		
-		
+		List<SimpleView> baseTables = lastView.findBaseTables();
+		for(SimpleView baseTable : baseTables){
+			db.addSymbolicRelation(baseTable.getSymbolicRelation()); 
+		}
 		
 		return db; 
 	}
 	
+	
+	public String toString(){
+		StringBuilder sb = new StringBuilder();
+		sb.append("DB: " + this.schema.getDBName() + "\n ---- \n");
+		
+		for(SymbolicRelation rel: relations){
+			sb.append(rel.toString() + "\n -------- \n"); 
+		}
+	
+		
+		return sb.toString();
+		
+	}
 	
 	
 	
