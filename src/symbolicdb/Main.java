@@ -3,12 +3,12 @@ package symbolicdb;
 import java.util.HashMap;
 import java.util.Map;
 
+import datagenerator.SymbolicToRealSample;
+
 import query.QuerySession;
+import schema.DBSchema;
+import schema.IMDBSchemaWithKeys;
 import templates.RoundRobinTemplateFilling;
-import edu.washington.db.cqms.common.sqlparser.DBSchema;
-import edu.washington.db.cqms.common.sqlparser.IMDBSchema;
-import edu.washington.db.cqms.snipsuggest.features.F_ColumnInGroupBy;
-import edu.washington.db.cqms.snipsuggest.features.F_PredicateInWhere;
 import edu.washington.db.cqms.snipsuggest.features.F_TableInFrom;
 import edu.washington.db.cqms.snipsuggest.features.QueryFeature;
 
@@ -16,7 +16,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception{
 		QuerySession qs = ExampleQuerySessions.getQS1(); 
-		generateViews(qs, IMDBSchema.getInstance()); 
+		generateViews(qs, IMDBSchemaWithKeys.getInstance()); 
 	}
 	
 	public static void generateViews(QuerySession qs, DBSchema schema){
@@ -57,13 +57,23 @@ public class Main {
 		
 		fillingTechnique.fillTemplates(lastView); 
 		
+		//lastView.addNewTupleToBaseTable("movie"); 
+		//lastView.addNewTupleToBaseTable("casts"); 
+		//lastView.update(); 
+		
+		
 		System.out.println(lastView.recursiveToString()); 
 		
 		System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%#"); 
 		
 		SymbolicDB symDB = SymbolicDB.constructDB(lastView);
+		
 		System.out.println(symDB); 
 		
+		System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%#"); 
+		
+		SymbolicToRealSample pop = new SymbolicToRealSample(symDB, null); 
+		System.out.println(pop.printSample()); 
 		
 		
 		

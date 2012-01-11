@@ -5,37 +5,53 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import templates.TemplateTuple;
+
 public class SymbolicTuple {
-	private int arity;
-	Variable[] variables; 
+	protected Variable[] variables; 
 	
-	SymbolicRelation underlyingRelation; 
+	//should this be symbolicrelation or relationschema? 
+	protected SymbolicRelation underlyingRelation; 
 	
-	public SymbolicTuple(SymbolicRelation underlyingRelation, int arity){
+	
+	public SymbolicTuple(SymbolicRelation underlyingRelation){
 		this.underlyingRelation = underlyingRelation; 
-		this.setArity(arity); 
-		this.variables = new Variable[arity]; 
+		this.variables = new Variable[underlyingRelation.arity()]; 
+	}
+	
+	
+	public SymbolicRelation underlyingRelation(){
+		return underlyingRelation; 
 	}
 	
 	public SymbolicTuple(SymbolicRelation underlyingRelation, Variable... variables){
 		this.underlyingRelation = underlyingRelation; 
-		this.setArity(variables.length);
-		this.variables = new Variable[getArity()];
-		for(int i=0; i<getArity(); i++){
+		this.variables = new Variable[arity()];
+		for(int i=0; i<arity(); i++){
 			this.variables[i] = variables[i]; 
 		}
 	}
 	
-	public static SymbolicTuple constructTupleWithNewVariables(SymbolicRelation underlyingRelation, int arity){
-		SymbolicTuple t = new SymbolicTuple(underlyingRelation, arity);
+	public static SymbolicTuple constructTupleWithNewVariables(SymbolicRelation underlyingRelation){
+		SymbolicTuple t = new SymbolicTuple(underlyingRelation);
 		for(int i=0; i<t.variables.length; i++){
-			t.variables[i] = new Variable(); 
+			t.variables[i] = new Variable(underlyingRelation.relationSchema().getAttribute(i)); 
 		}
 		return t; 
 	}
+	
+	public static TemplateTuple constructTemplateTupleWithNewVariables(SymbolicRelation underlyingRelation){
+		TemplateTuple t = new TemplateTuple(underlyingRelation);
+		for(int i=0; i<t.variables.length; i++){
+			t.variables[i] = new Variable(); //we make it without the ColumnSchema coz it's a template tuple
+		}
+		return t; 
+	}
+	
 
 	public void setColumn(int colIndex, Variable v){
 		variables[colIndex] = v; 
+		v.addColumnSchema(underlyingRelation.relationSchema().getAttribute(colIndex)); 
 	}
 	
 	public void setColumn(String columnName, Variable v, SimpleView view){
@@ -61,7 +77,7 @@ public class SymbolicTuple {
 	}
 	
 	public void replaceV1WithV2(Variable v1, Variable v2){
-		for(int i=0; i<getArity() ; i++){
+		for(int i=0; i<arity() ; i++){
 			if(variables[i] == v1){
 				variables[i] = v2; 
 			}
@@ -69,19 +85,19 @@ public class SymbolicTuple {
 	}
 	
 	public void merge(SymbolicTuple other){
-		assert(this.getArity() == other.getArity());
+		assert(this.arity() == other.arity());
 		
-		for(int i=0; i<getArity(); i++){
+		for(int i=0; i<arity(); i++){
 			variables[i].merge(other.variables[i]); 
 		}
 		
 	}
 	
 	public boolean canBeMerged(SymbolicTuple other){
-		if(getArity() != other.getArity()){
+		if(arity() != other.arity()){
 			return false;
 		}else{
-			for(int i=0; i<getArity(); i++){
+			for(int i=0; i<arity(); i++){
 				if(variables[i].canBeMerged(other.variables[i]) == false){
 					return false; 
 				}
@@ -92,16 +108,16 @@ public class SymbolicTuple {
 	}
 
 	public SymbolicTuple clone(){
-		SymbolicTuple t = new SymbolicTuple(this.underlyingRelation, this.getArity()); 
-		for(int i=0; i<getArity(); i++){
+		SymbolicTuple t = new SymbolicTuple(this.underlyingRelation); 
+		for(int i=0; i<arity(); i++){
 			t.setColumn(i, this.getColumn(i).clone()); 
 		}
 		return t; 
 	}
 	
 	protected SymbolicTuple cloneAccordingToMap(HashMap<Variable, Variable> varToNewVar){
-		SymbolicTuple t = new SymbolicTuple(this.underlyingRelation, this.getArity()); 
-		for(int i=0; i<getArity(); i++){
+		SymbolicTuple t = new SymbolicTuple(this.underlyingRelation); 
+		for(int i=0; i<arity(); i++){
 			Variable v = this.getColumn(i); 
 			if(varToNewVar.containsKey(v) == false){
 				varToNewVar.put(v, v.clone()); 
@@ -115,17 +131,13 @@ public class SymbolicTuple {
 	
 	public List<Variable> variables(){
 		List<Variable> vars = new ArrayList<Variable>();
-		for(int i=0; i < getArity(); i++){
+		for(int i=0; i < arity(); i++){
 			vars.add(variables[i]); 
 		}
 		return vars; 
 	}
 
-	public void setArity(int arity) {
-		this.arity = arity;
-	}
-
-	public int getArity() {
-		return arity;
+	public int arity() {
+		return underlyingRelation.arity();
 	}
 }

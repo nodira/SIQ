@@ -6,8 +6,8 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
-import edu.washington.db.cqms.common.sqlparser.DBSchema;
-import edu.washington.db.cqms.common.sqlparser.RelationSchema;
+import schema.DBSchema;
+
 
 public class SymbolicDB {
 	List<SymbolicRelation> relations = new ArrayList<SymbolicRelation>(); 
@@ -15,6 +15,10 @@ public class SymbolicDB {
 	
 	public SymbolicDB(DBSchema schema){
 		this.schema = schema; 
+	}
+	
+	public List<SymbolicRelation> relations(){
+		return relations; 
 	}
 
 	public void addSymbolicRelation(SymbolicRelation rel){

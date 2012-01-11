@@ -8,6 +8,9 @@ import java.util.List;
 
 import query.QuerySession;
 
+import schema.ColumnSchema;
+import schema.DBSchema;
+import schema.RelationSchema;
 import templates.Template;
 import templates.TemplateTuple;
 
@@ -18,8 +21,6 @@ import constraints.StringConstraint;
 import constraints.UnaryConstraint;
 import constraints.VariableConstraint;
 
-import edu.washington.db.cqms.common.sqlparser.DBSchema;
-import edu.washington.db.cqms.common.sqlparser.RelationSchema;
 import edu.washington.db.cqms.snipsuggest.features.F_ColumnInGroupBy;
 import edu.washington.db.cqms.snipsuggest.features.F_PredicateInWhere;
 import edu.washington.db.cqms.snipsuggest.features.F_TableInFrom;
@@ -60,7 +61,7 @@ public class SimpleView {
 		
 		RelationSchema tableSchema = schema.get(tableName); 
 		this.viewContent = new SymbolicRelation(tableSchema);
-		for(String colName : tableSchema.getAttributes()){
+		for(ColumnSchema colName : tableSchema.getAttributes()){
 			this.columnNames.add(tableName + "_" + colName); 
 		}
 		
@@ -70,7 +71,7 @@ public class SimpleView {
 	
 	public SimpleView(String viewName, QueryFeature addedSnippet, DBSchema schema, SimpleView... underlyingViews){
 		this.schema = schema; 
-		this.viewName = viewName; 
+		this.viewName = viewName.toLowerCase(); 
 		this.columnNames = new ArrayList<String>(); 
 		this.underlyingViews = new ArrayList<SimpleView>();
 		this.templates = new ArrayList<Template>(); 
@@ -87,7 +88,7 @@ public class SimpleView {
 			//columns from underlying views
 			for(SimpleView underlyingView : underlyingViews){
 				columnNames.addAll(underlyingView.columnNames); 
-				templates.add(new Template(TemplateTuple.constructTupleWithNewVariables(underlyingView.getViewName(), underlyingView.viewContent.arity())));
+				templates.add(new Template(SymbolicTuple.constructTemplateTupleWithNewVariables(underlyingView.getSymbolicRelation())));
 			}
 			
 		
@@ -102,8 +103,8 @@ public class SimpleView {
 			SymbolicRelation x = underlyingView.viewContent;
 			UnaryConstraint c = toUnaryConstraint(pred); 
 			if(c != null){ //indeed a unary constraint
-				SymbolicTuple passingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
-				SymbolicTuple failingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
+				TemplateTuple passingTuple = SymbolicTuple.constructTemplateTupleWithNewVariables(underlyingView.viewContent);
+				TemplateTuple failingTuple = SymbolicTuple.constructTemplateTupleWithNewVariables(underlyingView.viewContent);
 				
 				Variable passingV = passingTuple.getColumn(c.getColumnName(), underlyingView);
 				passingV.addConstraint(c.getConstraint()); 
@@ -111,17 +112,17 @@ public class SimpleView {
 				Variable failingV = failingTuple.getColumn(c.getColumnName(), underlyingView);
 				failingV.addConstraint(c.getConstraint().negate()); 
 				
-				templates.add(new Template(new TemplateTuple(underlyingView.getViewName(), passingTuple))); 
-				templates.add(new Template(new TemplateTuple(underlyingView.getViewName(), failingTuple))); 
+				templates.add(new Template(passingTuple)); 
+				templates.add(new Template(failingTuple)); 
 
 			}else{
 				BinaryConstraint bc = toBinaryConstraint(pred); 
 				
 				//currently do not support any comparisonop except equals between vars. so: only one template
-				SymbolicTuple passingTuple = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
+				TemplateTuple passingTuple = SymbolicTuple.constructTemplateTupleWithNewVariables(underlyingView.viewContent);
 				passingTuple.setColumn(underlyingView.columnIndex(bc.getCol2()), passingTuple.getColumn(bc.getCol1(), underlyingView));
 
-				templates.add(new Template(new TemplateTuple(underlyingView.getViewName(), passingTuple))); 
+				templates.add(new Template(passingTuple)); 
 			
 			}
 			
@@ -138,21 +139,21 @@ public class SimpleView {
 			columnNames.add(colName);
 			columnNames.add("countStar"); 
 			
-			SymbolicTuple t1 = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
-			SymbolicTuple t2 = SymbolicTuple.constructTupleWithNewVariables(null, underlyingView.viewContent.arity());
+			TemplateTuple t1 = SymbolicTuple.constructTemplateTupleWithNewVariables(underlyingView.viewContent);
+			TemplateTuple t2 = SymbolicTuple.constructTemplateTupleWithNewVariables(underlyingView.viewContent);
 			t2.setColumn(colIndex, t1.getColumn(colIndex));
-			templates.add(new Template(new TemplateTuple(underlyingView.getViewName(), t1),
-						  new TemplateTuple(underlyingView.getViewName(), t2))); 
+			templates.add(new Template(t1, t2)); 
 			
 		}
 		
-		RelationSchema relSchema = new RelationSchema(viewName); 
+		RelationSchema relSchema = new RelationSchema(this.viewName); 
 		for(String columnName: columnNames){
 			relSchema.addAttribute(columnName); 
 		}
 		
 		
 		this.viewContent = new SymbolicRelation(relSchema); 
+		
 		
 		
 	}
@@ -168,12 +169,17 @@ public class SimpleView {
 
 	
 	public void update(){
+		//update the underlying views first. 
 		for(SimpleView v : underlyingViews){
 			v.update(); 
 		}
 		
 		//try to satisfy templates first 
 		for(Template template : templates){
+			if((template+"").equals("v0(v12 v13 v14 v15 )     v13 EQUALS 'officer 444',")){
+				System.out.println("template: " + template); 
+			}
+			//if template is not already satisfied
 			if(appliedTemplates.contains(template) == false && template.matchesTemplate(underlyingViews)){
 				template.applyTemplate(underlyingViews);
 				appliedTemplates.add(template); 
@@ -255,16 +261,14 @@ public class SimpleView {
 	
 	public String toString(){
 		StringBuilder s = new StringBuilder(viewName + "\n");
+		s.append(viewContent.relationSchema().getRelationName() + "\n\n"); 
+		
 		s.append( "  addedSnippet: " + addedSnippet + "\n"); 
 		s.append("  underlying: ");  
 		for(SimpleView v : underlyingViews){
 			s.append( v.viewName + " "); 
 		}
 		
-		//s.append( "\n   ---\n");
-		//for(String c : columnNames){
-			//s.append(c + "\t") ; 
-		//}
 		s.append( "\n" + viewContent + "\n  Templates: \n"); 
 		
 		for(Template t : templates){
@@ -332,7 +336,7 @@ public class SimpleView {
 	}
 	
 	public void addTupleWithNewVariables(){
-		addTuple(SymbolicTuple.constructTupleWithNewVariables(viewContent, columnNames.size())); 
+		addTuple(SymbolicTuple.constructTupleWithNewVariables(viewContent)); 
 	}
 	
 	public void addTuple(SymbolicTuple t){
@@ -374,8 +378,8 @@ public class SimpleView {
 		
 		clone.viewContent = new SymbolicRelation(this.viewContent.relationSchema());
 		for(SymbolicTuple t : this.viewContent.getTuples()){
-			SymbolicTuple tClone = new SymbolicTuple(this.viewContent, t.getArity());
-			for(int i =0 ; i<t.getArity(); i++){
+			SymbolicTuple tClone = new SymbolicTuple(this.viewContent);
+			for(int i =0 ; i<t.arity(); i++){
 				Variable oldVar = t.getColumn(i);
 				Variable newVar; 
 				if(oldVarToNewVar.containsKey(oldVar)){
@@ -424,7 +428,7 @@ public class SimpleView {
 	
 	public void addNewTupleToBaseTable(String tableName){
 		if(viewName.equals(tableName) && underlyingViews.size() == 0){ //i.e. base table
-			this.addTuple(SymbolicTuple.constructTupleWithNewVariables(viewContent, columnNames.size()));
+			this.addTuple(SymbolicTuple.constructTupleWithNewVariables(viewContent));
 			return; 
 		}else{
 			for(SimpleView v : underlyingViews){

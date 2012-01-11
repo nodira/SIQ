@@ -14,4 +14,7 @@ public interface VariableConstraint {
 	public String stringValue(); 
 	
 	public String toString(); 
+	
+	public String toSqlString(String aliasDotCol); 
+	
 }

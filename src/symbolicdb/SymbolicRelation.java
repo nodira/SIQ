@@ -6,12 +6,15 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 
+import schema.ColumnSchema;
+import schema.RelationSchema;
+
 import constraints.BinaryConstraint;
 import constraints.ComparisonOp;
 import constraints.NumericConstraint;
 import constraints.UnaryConstraint;
 import constraints.VariableConstraint;
-import edu.washington.db.cqms.common.sqlparser.RelationSchema;
+
 
 public class SymbolicRelation {
 	
@@ -42,7 +45,7 @@ public class SymbolicRelation {
 	public static SymbolicRelation copy(SymbolicRelation x){
 		SymbolicRelation copy = new SymbolicRelation(x.relationSchema); 
 		for(SymbolicTuple tx : x.getTuples()){
-			SymbolicTuple t = new SymbolicTuple(copy, x.relationSchema.size());
+			SymbolicTuple t = new SymbolicTuple(copy);
 			for(int i=0; i<x.relationSchema.size(); i++){
 				t.setColumn(i, tx.getColumn(i)); 
 			}
@@ -56,12 +59,12 @@ public class SymbolicRelation {
 	public static RelationSchema cartesianProduct(RelationSchema r1, RelationSchema r2){
 		RelationSchema schema = new RelationSchema(r1.getRelationName() + "_x_" + r2.getRelationName() );
 		
-		List<String> attrs = r1.getAttributes(); 
-		for(String attr: attrs){
+		List<ColumnSchema> attrs = r1.getAttributes(); 
+		for(ColumnSchema attr: attrs){
 			schema.addAttribute(attr + "_1"); 
 		}
 		attrs = r2.getAttributes(); 
-		for(String attr: attrs){
+		for(ColumnSchema attr: attrs){
 			schema.addAttribute(attr + "_2"); 
 		}
 		
@@ -74,7 +77,7 @@ public class SymbolicRelation {
 		
 		for(SymbolicTuple tx : x.getTuples()){
 			for(SymbolicTuple ty : y.getTuples()){
-				SymbolicTuple t = new SymbolicTuple(xy, xy.relationSchema.size());
+				SymbolicTuple t = new SymbolicTuple(xy);
 				for(int i=0; i<xy.relationSchema.size(); i++){
 					if(i < x.relationSchema.size()){
 						t.setColumn(i, tx.getColumn(i));
@@ -132,7 +135,7 @@ public class SymbolicRelation {
 	public static SymbolicRelation copyRelationWithSameVariables(SymbolicRelation x){
 		SymbolicRelation r = new SymbolicRelation(x.relationSchema);
 		for(SymbolicTuple t : x.getTuples()){
-			SymbolicTuple tt = new SymbolicTuple(r, r.relationSchema.size());
+			SymbolicTuple tt = new SymbolicTuple(r);
 			for(int i=0; i < r.relationSchema.size(); i++){
 				tt.setColumn(i, t.getColumn(i)); 
 			}
@@ -160,11 +163,11 @@ public class SymbolicRelation {
 		}
 		
 		for(Variable v : varToCount.keySet()){
-			SymbolicTuple t = new SymbolicTuple(r, 2);
+			SymbolicTuple t = new SymbolicTuple(r);
 			t.setColumn(0, v);
 			
 			int count = varToCount.get(v); 
-			Variable countVar = new Variable();
+			Variable countVar = new Variable(schema.getAttribute(1));
 			countVar.addConstraint(new NumericConstraint(new ComparisonOp.EQUALS(), count)); 
 			t.setColumn(1, countVar); 
 			
@@ -178,16 +181,15 @@ public class SymbolicRelation {
 	
 	public String toString(){
 		StringBuilder s = new StringBuilder();  
-		
 		s.append(relationSchema.getRelationName() + "\n"); 
-		for(String c : relationSchema.getAttributes()){
-			s.append(c + "\t") ; 
+		for(ColumnSchema c : relationSchema.getAttributes()){
+			s.append(c + "\t\t") ; 
 		}
 		s.append("\n"); 
 		
 		
 		for(SymbolicTuple t : getTuples()){
-			s.append(t + "\n"); 
+			s.append(t.toString() + "\n"); 
 		}
 		s.append("\n Constraints: \n"); 
 		HashSet<Variable> printedVars = new HashSet<Variable>();

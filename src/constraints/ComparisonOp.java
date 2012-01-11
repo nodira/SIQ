@@ -20,13 +20,30 @@ public abstract class ComparisonOp {
 			System.exit(-1); 
 			return null; 
 		}
-		
-		
-		
+	}
+	
+	public static String stringFromOp(ComparisonOp op){
+		if(op instanceof EQUALS){
+			return "="; 
+		}else if(op instanceof NOT_EQUALS){
+			return "<>"; 
+		}else if(op instanceof LT){
+			return "<"; 
+		}else if(op instanceof GT){
+			return ">"; 
+		}else if(op instanceof LEQ){
+			return "<=";
+		}else if(op instanceof GEQ){
+			return ">="; 
+		}else{
+			System.err.println("Don't know the string representation for " + op.getClass().getName()); 
+			System.exit(-1);
+			return null; 
+		}
 		
 	}
 	public abstract ComparisonOp inverse(); 
-	public abstract ComparisonOp negate(); 
+	public abstract ComparisonOp negate();
 	
 	public static class EQUALS extends ComparisonOp{
 		public EQUALS(){}
@@ -93,5 +110,7 @@ public abstract class ComparisonOp {
 			return new GEQ();
 		}
 	}
+
+	
 	
 }

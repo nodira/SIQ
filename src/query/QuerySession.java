@@ -1,10 +1,9 @@
 package query;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.ArrayList; 
 
-import edu.washington.db.cqms.common.sqlparser.DBSchema;
+import schema.DBSchema;
+
 import edu.washington.db.cqms.snipsuggest.features.F_AggregateInSelect;
 import edu.washington.db.cqms.snipsuggest.features.F_ColumnInGroupBy;
 import edu.washington.db.cqms.snipsuggest.features.F_ColumnInSelect;

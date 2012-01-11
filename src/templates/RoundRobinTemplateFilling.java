@@ -2,9 +2,9 @@ package templates;
 
 import java.util.List;
 
-import edu.washington.db.cqms.common.sqlparser.DBSchema;
-import edu.washington.db.cqms.common.sqlparser.RelationSchema;
 
+import schema.DBSchema;
+import schema.RelationSchema;
 import symbolicdb.SimpleView;
 import symbolicdb.SymbolicTuple;
 
@@ -32,10 +32,14 @@ public class RoundRobinTemplateFilling implements TemplateFillingTechnique{
 				lastViewClone.addNewTupleToBaseTable(baseTable.getRelationName());
 				lastViewClone.update(); 
 				
-				//System.out.println(lastViewClone.recursiveToString()); 
+				System.out.println("      <CANDIDATE adding = " + baseTable.getRelationName() + " ________ "); 
 				
+				if(baseTable.getRelationName().equals("")){
+					System.out.println(lastViewClone.recursiveToString()); 
+
+				}
 				double newScore = lastViewClone.templateCoverageScore();
-				//System.out.println("newScore for " + baseTable.getRelationName() + ": " + newScore); 
+				System.out.println("     </CANDIDATE " + baseTable.getRelationName() + ": " + newScore + " > ________ "); 
 				
 				if( (newScore - origScore) >= bestImprovement){
 					bestImprovement = newScore - origScore;

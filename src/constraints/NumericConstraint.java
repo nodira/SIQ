@@ -80,6 +80,11 @@ public class NumericConstraint implements VariableConstraint{
 	public String stringValue() {
 		return value + ""; 
 	}
+
+	@Override
+	public String toSqlString(String aliasDotCol) {
+		return aliasDotCol + ComparisonOp.stringFromOp(op) + value; 
+	}
 	
 	
 }

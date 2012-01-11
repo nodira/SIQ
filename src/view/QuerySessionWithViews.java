@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import query.QuerySession;
+import schema.ColumnSchema;
+import schema.DBSchema;
+import schema.RelationSchema;
 
-import edu.washington.db.cqms.common.sqlparser.DBSchema;
-import edu.washington.db.cqms.common.sqlparser.RelationSchema;
 import edu.washington.db.cqms.snipsuggest.features.F_ColumnInGroupBy;
 import edu.washington.db.cqms.snipsuggest.features.F_ColumnInSelect;
 import edu.washington.db.cqms.snipsuggest.features.F_PredicateInWhere;
@@ -40,7 +41,7 @@ public class QuerySessionWithViews {
 				F_TableInFrom table = (F_TableInFrom) addedSnippet; 
 				RelationSchema tableSchema = underlyingQuerySession.getSchema().get(table.getTableName());
 				 
-				for(String col : tableSchema.getAttributes()){
+				for(ColumnSchema col : tableSchema.getAttributes()){
 					String fullColName = tableSchema.getRelationName() + "." + col ; 
 					viewDefinition.append( fullColName + " AS " + fullColName.replace(".", "") + "_" + i + ","); 
 					viewColumns.add(fullColName.replace(".", "")+"_" + i);
@@ -59,7 +60,7 @@ public class QuerySessionWithViews {
 				}
 				 
 				//columns from addedTable
-				for(String col : tableSchema.getAttributes()){
+				for(ColumnSchema col : tableSchema.getAttributes()){
 					String fullColName = tableSchema.getRelationName() + "." + col ; 
 					viewDefinition.append( fullColName + " AS " + fullColName.replace(".", "") + "_" + i + ","); 
 					viewColumns.add(fullColName.replace(".", "") + "_" + i);
@@ -150,7 +151,7 @@ public class QuerySessionWithViews {
 			
 			//cols from newly added table
 			RelationSchema tableSchema = baseSchema.get(addedTable.getTableName());
-			for(String col : tableSchema.getAttributes()){
+			for(ColumnSchema col : tableSchema.getAttributes()){
 				backrule.append("NEW." + addedTable.getTableName() + col + "_" + newViewIndex + ","); 
 			}
 			backrule.deleteCharAt(backrule.length() -1); //remove last comma
@@ -169,7 +170,7 @@ public class QuerySessionWithViews {
 			
 			//cols from newly added table
 			RelationSchema tableSchema = baseSchema.get(addedTable.getTableName());
-			for(String col : tableSchema.getAttributes()){
+			for(ColumnSchema col : tableSchema.getAttributes()){
 				backrule.append("NEW." + addedTable.getTableName() + col + "_" + newViewIndex + ","); 
 			}
 			backrule.deleteCharAt(backrule.length() -1); //remove last comma
