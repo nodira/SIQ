@@ -9,6 +9,13 @@ import edu.washington.db.cqms.snipsuggest.features.F_TableInFrom;
 
 public class ExampleQuerySessions {
 	public static QuerySession getQS1(){
+		
+		/**
+		 * select 	actor.id, count(*) 
+		 * from 	actor a, casts c
+		 * where 	a.gender = 'f' and c.pid = a.id
+		 * group by actor.id
+		 */
 		QuerySession qs = new QuerySession("qs1", IMDBSchemaWithKeys.getInstance()); 
 		
 		//step 1
@@ -64,8 +71,8 @@ public class ExampleQuerySessions {
 		qs.addSnippets(new F_PredicateInWhere("casts", "mid", "movie", "id", "="));
 		qs.addSnippets(new F_PredicateInWhere("movie", "name", null, "'Officer 444'", "="));
 		
-		qs.addSnippets(new F_ColumnInSelect("actor", "fname"));
-		qs.addSnippets(new F_ColumnInSelect("actor", "lname"));
+		qs.addSnippets(new F_ColumnInSelect("actor", "fname"), new F_ColumnInSelect("actor", "lname") );
+		//qs.addSnippets();
 		
 		
 		

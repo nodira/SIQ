@@ -18,6 +18,10 @@ public class NumericConstraint implements VariableConstraint{
 		this.value = value; 
 	}
 	
+	public String toString(){
+		return op + " " + value; 
+	}
+	
 	private List<Range> toRanges(){
 		List<Range> ranges = new ArrayList<Range>(); 
 		
@@ -62,9 +66,7 @@ public class NumericConstraint implements VariableConstraint{
 		return false; 
 	}	
 	
-	public String toString(){
-		return op.getClass().getCanonicalName() + value; 
-	}
+
 
 	@Override
 	public VariableConstraint negate() {
@@ -79,6 +81,10 @@ public class NumericConstraint implements VariableConstraint{
 	@Override
 	public String stringValue() {
 		return value + ""; 
+	}
+	
+	public double value(){
+		return value; 
 	}
 
 	@Override

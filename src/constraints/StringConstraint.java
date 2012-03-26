@@ -1,7 +1,5 @@
 package constraints;
 
-import java.util.ArrayList;
-import java.util.List;
 
 public class StringConstraint implements VariableConstraint{
 	
@@ -17,8 +15,9 @@ public class StringConstraint implements VariableConstraint{
 		this.value = value; 
 	}
 	
-	
-	
+	public String toString(){
+		return op + " " + value; 
+	}
 	
 	
 	///need to test this. 
@@ -50,10 +49,7 @@ public class StringConstraint implements VariableConstraint{
 			return false; 
 		}
 	}	
-	
-	public String toString(){
-		return op.getClass().getCanonicalName() + value; 
-	}
+
 
 
 

@@ -5,6 +5,7 @@ import java.util.List;
 
 import schema.ColumnSchema;
 
+import constraints.ComparisonOp;
 import constraints.NumericConstraint;
 import constraints.StringConstraint;
 import constraints.UnaryConstraint;
@@ -21,10 +22,20 @@ public class Variable implements Cloneable{
 	//list of all the columns this variable currently appears in 
 	List<ColumnSchema> columnSchemas;  
 	
+	
+	
+	
 	protected Variable(){
 		this.variableName = "v" + numVariables++; 
 		this.setConstraints(new ArrayList<VariableConstraint>()); 
 		this.columnSchemas = new ArrayList<ColumnSchema>(); 
+	}
+	
+	public Variable(String varName){
+		this.variableName = varName; 
+		this.setConstraints(new ArrayList<VariableConstraint>()); 
+		this.columnSchemas = new ArrayList<ColumnSchema>(); 
+		
 	}
 	
 	
@@ -39,9 +50,16 @@ public class Variable implements Cloneable{
 		}
 	}
 	
-	
+	public Variable clone(String newVariableName){
+		Variable clone = new Variable(newVariableName); 
+		return finishClone(clone); 
+	}
 	public Variable clone(){
 		Variable clone = new Variable();
+		return finishClone(clone); 
+	}
+	
+	private Variable finishClone(Variable clone){
 		clone.variableType = this.variableType; 
 		for(VariableConstraint c : constraints){
 			clone.addConstraint(c); 
@@ -130,8 +148,8 @@ public class Variable implements Cloneable{
 		return variableName;
 	}
 	
-	public String toStringWithConstraint(){
-		StringBuilder sb = new StringBuilder(variableName + ": " ); 
+	public String getConstraintString(){
+		StringBuilder sb = new StringBuilder(); 
 		for(VariableConstraint c : getConstraints()){
 			sb.append(c + " ^ "); 
 		}
@@ -139,6 +157,10 @@ public class Variable implements Cloneable{
 			sb.delete(sb.length()-2, sb.length()); 
 		}
 		return sb.toString(); 
+	}
+	
+	public String toStringWithConstraint(){
+		return variableName + ": " + getConstraintString(); 
 	}
 
 	public void setConstraints(List<VariableConstraint> constraints) {
@@ -149,6 +171,64 @@ public class Variable implements Cloneable{
 		return constraints;
 	}
 	
+	public int getNumConstraints(){
+		return constraints.size(); 
+	}
+	
+	public double getDoubleValue(){
+		for(VariableConstraint c : constraints){
+			if(c instanceof NumericConstraint){
+				NumericConstraint nc = (NumericConstraint) c;
+				if(nc.getOp() instanceof ComparisonOp.EQUALS){
+					return nc.value();
+				}
+			}
+		}
+		
+		throw new RuntimeException("Value of this variable isn't fixed:  " + this); 
+	}
+	
+	public String getStringValue(){
+		for(VariableConstraint c : constraints){
+			if(c instanceof StringConstraint){
+				StringConstraint sc = (StringConstraint) c;
+				if(sc.getOp() instanceof ComparisonOp.EQUALS){
+					return sc.stringValue();
+				}
+			}
+		}
+		
+		throw new RuntimeException("Value of this variable isn't fixed:  " + this); 
+	}
+
+	public boolean hasStringValue(){
+		for(VariableConstraint c : constraints){
+			if(c instanceof StringConstraint){
+				StringConstraint sc = (StringConstraint) c;
+				if(sc.getOp() instanceof ComparisonOp.EQUALS){
+					return true; 
+				}
+			}
+		}
+		
+		return false; 
+	}
+	
+	public boolean hasDoubleValue(){
+		for(VariableConstraint c : constraints){
+			if(c instanceof NumericConstraint){
+				NumericConstraint nc = (NumericConstraint) c;
+				if(nc.getOp() instanceof ComparisonOp.EQUALS){
+					return true; 
+				}
+			}
+		}
+		return false; 
+	}
+	
+	public int numColumnSchemas(){
+		return columnSchemas.size(); 
+	}
 	
 	
 }

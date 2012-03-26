@@ -3,45 +3,47 @@ package symbolicdb;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 
-import templates.TemplateTuple;
+import old.SimpleView;
+import old.TemplateTuple;
+
+import schema.RelationSchema;
 
 public class SymbolicTuple {
 	protected Variable[] variables; 
-	
-	//should this be symbolicrelation or relationschema? 
-	protected SymbolicRelation underlyingRelation; 
+	protected RelationSchema underlyingSchema; 
 	
 	
-	public SymbolicTuple(SymbolicRelation underlyingRelation){
-		this.underlyingRelation = underlyingRelation; 
-		this.variables = new Variable[underlyingRelation.arity()]; 
+	public SymbolicTuple(RelationSchema underlyingSchema){
+		this.underlyingSchema = underlyingSchema; 
+		this.variables = new Variable[underlyingSchema.size()]; 
 	}
 	
 	
-	public SymbolicRelation underlyingRelation(){
-		return underlyingRelation; 
+	public RelationSchema underlyingSchema(){
+		return underlyingSchema; 
 	}
 	
-	public SymbolicTuple(SymbolicRelation underlyingRelation, Variable... variables){
-		this.underlyingRelation = underlyingRelation; 
+	public SymbolicTuple(RelationSchema underlyingSchema, Variable... variables){
+		this.underlyingSchema = underlyingSchema; 
 		this.variables = new Variable[arity()];
 		for(int i=0; i<arity(); i++){
 			this.variables[i] = variables[i]; 
 		}
 	}
 	
-	public static SymbolicTuple constructTupleWithNewVariables(SymbolicRelation underlyingRelation){
-		SymbolicTuple t = new SymbolicTuple(underlyingRelation);
+	public static SymbolicTuple constructTupleWithNewVariables(RelationSchema underlyingSchema){
+		SymbolicTuple t = new SymbolicTuple(underlyingSchema);
 		for(int i=0; i<t.variables.length; i++){
-			t.variables[i] = new Variable(underlyingRelation.relationSchema().getAttribute(i)); 
+			t.variables[i] = new Variable(underlyingSchema.getAttribute(i)); 
 		}
 		return t; 
 	}
 	
-	public static TemplateTuple constructTemplateTupleWithNewVariables(SymbolicRelation underlyingRelation){
-		TemplateTuple t = new TemplateTuple(underlyingRelation);
+	public static TemplateTuple constructTemplateTupleWithNewVariables(RelationSchema underlyingSchema){
+		TemplateTuple t = new TemplateTuple(underlyingSchema);
 		for(int i=0; i<t.variables.length; i++){
 			t.variables[i] = new Variable(); //we make it without the ColumnSchema coz it's a template tuple
 		}
@@ -49,18 +51,34 @@ public class SymbolicTuple {
 	}
 	
 
-	public void setColumn(int colIndex, Variable v){
-		variables[colIndex] = v; 
-		v.addColumnSchema(underlyingRelation.relationSchema().getAttribute(colIndex)); 
-	}
+
 	
 	public void setColumn(String columnName, Variable v, SimpleView view){
 		setColumn(view.columnIndex(columnName), v); 
 	}
 	
+	public void setColumn(int columnIndex, Variable v) {
+		variables[columnIndex] = v; 
+		
+	}
+
+
+	public void setColumn(String columnName, Variable v){
+		setColumn(underlyingSchema.getAttributeIndex(columnName), v); 
+	}
+	
+	
 	public Variable getColumn(int colIndex){
 		return variables[colIndex]; 
 	}
+	
+	public Variable getColumn(String columnName){
+		System.out.println("columnName: " + columnName); 
+		System.out.println("underlyingSchema: " + underlyingSchema.toString()); 
+		
+		return getColumn(underlyingSchema.getAttributeIndex(columnName)); 
+	}
+	
 	
 	public Variable getColumn(String columnName, SimpleView view){
 		return getColumn(view.columnIndex(columnName)); 
@@ -108,15 +126,15 @@ public class SymbolicTuple {
 	}
 
 	public SymbolicTuple clone(){
-		SymbolicTuple t = new SymbolicTuple(this.underlyingRelation); 
+		SymbolicTuple t = new SymbolicTuple(this.underlyingSchema); 
 		for(int i=0; i<arity(); i++){
 			t.setColumn(i, this.getColumn(i).clone()); 
 		}
 		return t; 
 	}
 	
-	protected SymbolicTuple cloneAccordingToMap(HashMap<Variable, Variable> varToNewVar){
-		SymbolicTuple t = new SymbolicTuple(this.underlyingRelation); 
+	protected SymbolicTuple cloneAccordingToMap(Hashtable<Variable, Variable> varToNewVar){
+		SymbolicTuple t = new SymbolicTuple(this.underlyingSchema); 
 		for(int i=0; i<arity(); i++){
 			Variable v = this.getColumn(i); 
 			if(varToNewVar.containsKey(v) == false){
@@ -138,6 +156,6 @@ public class SymbolicTuple {
 	}
 
 	public int arity() {
-		return underlyingRelation.arity();
+		return underlyingSchema.size();
 	}
 }

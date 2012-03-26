@@ -1,5 +1,7 @@
 package constraints;
 
+import edu.washington.db.cqms.snipsuggest.features.F_PredicateInWhere;
+
 public class UnaryConstraint {
 	
 	String columnName;
@@ -27,8 +29,32 @@ public class UnaryConstraint {
 		}
 	}
 	
-	public int hashCode(){
-		return this.toString().hashCode(); 
+	public String toString(){
+		return  constraint.toSqlString(columnName); 		 
+		
+	}
+	
+	public static UnaryConstraint constructUnaryConstraint(F_PredicateInWhere pred){
+		String constForComparison; 
+		ComparisonOp op; 
+		
+		if(pred.lhsIsConst()){
+			constForComparison = pred.getCol1(); 
+			op = ComparisonOp.opFromString(pred.getOp()).inverse(); 
+		}else if(pred.rhsIsConst()){
+			constForComparison = pred.getCol2();
+			op = ComparisonOp.opFromString(pred.getOp()); 
+		}else{
+			return null; 
+		}
+		
+		if(constForComparison.startsWith("'")){
+			StringConstraint c = new StringConstraint(ComparisonOp.opFromString(pred.getOp()), constForComparison);
+			return new UnaryConstraint(pred.getTable1() + "_" + pred.getCol1(), c); 
+		}else{
+			NumericConstraint c = new NumericConstraint(ComparisonOp.opFromString(pred.getOp()), Double.parseDouble(constForComparison));
+			return new UnaryConstraint(pred.getTable1() + "_" + pred.getCol1(), c);
+		}
 	}
 	
 	

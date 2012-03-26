@@ -1,9 +1,16 @@
 package datagenerator;
 
+import java.io.FileInputStream;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Properties;
 
 import constraints.VariableConstraint;
 
@@ -13,12 +20,31 @@ import symbolicdb.SymbolicTuple;
 import symbolicdb.Variable;
 
 public class SymbolicToRealSample {
-	SymbolicDB symbolicDB;
-	Connection connToDB; 
+	static final int NUM_INSTANCES_DESIRED = 10; 
 	
-	public SymbolicToRealSample(SymbolicDB symbolicDB, Connection connToDB){
+	SymbolicDB symbolicDB;
+	String propertiesFile;  
+	
+	public SymbolicToRealSample(SymbolicDB symbolicDB, String propertiesFile){
 		this.symbolicDB = symbolicDB;
-		this.connToDB   = connToDB; 
+		this.propertiesFile = propertiesFile; 
+	}
+	
+	private Connection createConn(){
+		try{
+			Properties imdbProps = new Properties();
+			imdbProps.load(new FileInputStream(propertiesFile));
+			String url = imdbProps.getProperty("url");
+			String driver = imdbProps.getProperty("driver");
+			Class.forName(driver); 
+			
+			return DriverManager.getConnection(url, imdbProps); 
+		}catch(Exception ex){
+			ex.printStackTrace(); 
+			System.exit(-1);
+			return null; 
+		}
+		
 	}
 	
 	public String printSample(){
@@ -38,7 +64,7 @@ public class SymbolicToRealSample {
 		
 		for(int i=0; i<allTuples.size(); i++){
 			SymbolicTuple t = allTuples.get(i); 
-			String tableName = t.underlyingRelation().relationSchema().getRelationName(); 
+			String tableName = t.underlyingSchema().getRelationName(); 
 			String alias 	 = "" + tableName.charAt(0) + i; 
 			
 			fromClause.append(tableName + " " + alias); 
@@ -56,7 +82,7 @@ public class SymbolicToRealSample {
 					allVariables.add(v); 
 				}
 				
-				String aliasDotCol = alias + "." + t.underlyingRelation().relationSchema().getAttribute(j) ;
+				String aliasDotCol = alias + "." + t.underlyingSchema().getAttribute(j) ;
 				
 				if(variable2AliasDotCols.containsKey(v) == false){
 					variable2AliasDotCols.put(v, new ArrayList<String>()); 
@@ -100,7 +126,23 @@ public class SymbolicToRealSample {
 		}
 		
 		
-		return "select * \n" + fromClause.toString() + whereClause.toString(); 
+		String query = "use imdb; select top " + NUM_INSTANCES_DESIRED + "  * \n" + fromClause.toString() + whereClause.toString(); 
+		System.out.println(query); 
+		Connection connToDB = createConn(); 
+		try{
+			Statement stmt = connToDB.createStatement();
+			ResultSet rs = stmt.executeQuery(query); 
+			printResultSetAndClose(rs);
+			rs.close(); 
+			stmt.close();
+			connToDB.close(); 
+		    
+		}catch(Exception ex){
+			ex.printStackTrace(); 
+			System.exit(-1); 
+		}
+		
+		return ""; 
 		
 		
 		
@@ -109,6 +151,49 @@ public class SymbolicToRealSample {
 		
 		
 	}
+
+	
+	public static void printResultSetAndClose(ResultSet rs) throws Exception{
+		ResultSetMetaData rsmd = rs.getMetaData();
+
+		//printColTypes(rsmd);
+		System.out.println("");
+
+		int numberOfColumns = rsmd.getColumnCount();
+
+		for (int i = 1; i <= numberOfColumns; i++) {
+			if (i > 1) System.out.print(",  ");
+			String columnName = rsmd.getColumnName(i);
+			System.out.print(columnName);
+		}
+		System.out.println("");
+ 
+		while (rs.next()) {
+			for (int i = 1; i <= numberOfColumns; i++) {
+				if (i > 1) System.out.print(",  ");
+				String columnValue = rs.getString(i);
+				System.out.print(columnValue);
+			}
+			System.out.println("");  
+		}
+	}
+      
+	
+	
+
+	public static void printColTypes(ResultSetMetaData rsmd)
+	throws SQLException {
+		int columns = rsmd.getColumnCount();
+		for (int i = 1; i <= columns; i++) {
+			int jdbcType = rsmd.getColumnType(i);
+			String name = rsmd.getColumnTypeName(i);
+			System.out.print("Column " + i + " is JDBC type " + jdbcType);
+			System.out.println(", which the DBMS calls " + name);
+		}
+	}
+
+
 	
 	
 }
+

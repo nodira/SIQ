@@ -2,6 +2,11 @@ package constraints;
 
 
 public abstract class ComparisonOp {
+	
+	public String toString(){
+		return stringFromOp(this); 
+	}
+	
 	public static ComparisonOp opFromString(String opString){
 		if(opString.equals("=")){
 			return new EQUALS(); 

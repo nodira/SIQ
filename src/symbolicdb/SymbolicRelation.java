@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 
+import old.SimpleView;
+
 import schema.ColumnSchema;
 import schema.RelationSchema;
 
@@ -32,7 +34,11 @@ public class SymbolicRelation {
 		
 	}
 	
-	protected SymbolicRelation cloneAccordingToMap(HashMap<Variable, Variable> varToNewVar){
+	public void removeTuple(SymbolicTuple tuple){
+		tuples.remove(tuple); 
+	}
+	
+	protected SymbolicRelation cloneAccordingToMap(Hashtable<Variable, Variable> varToNewVar){
 		SymbolicRelation clone = new SymbolicRelation(this.relationSchema); 
 		
 		for(SymbolicTuple t : tuples){
@@ -45,7 +51,7 @@ public class SymbolicRelation {
 	public static SymbolicRelation copy(SymbolicRelation x){
 		SymbolicRelation copy = new SymbolicRelation(x.relationSchema); 
 		for(SymbolicTuple tx : x.getTuples()){
-			SymbolicTuple t = new SymbolicTuple(copy);
+			SymbolicTuple t = new SymbolicTuple(x.relationSchema);
 			for(int i=0; i<x.relationSchema.size(); i++){
 				t.setColumn(i, tx.getColumn(i)); 
 			}
@@ -56,28 +62,16 @@ public class SymbolicRelation {
 	}
 	
 	///TODO: should be moved into RelationSchema class. 
-	public static RelationSchema cartesianProduct(RelationSchema r1, RelationSchema r2){
-		RelationSchema schema = new RelationSchema(r1.getRelationName() + "_x_" + r2.getRelationName() );
-		
-		List<ColumnSchema> attrs = r1.getAttributes(); 
-		for(ColumnSchema attr: attrs){
-			schema.addAttribute(attr + "_1"); 
-		}
-		attrs = r2.getAttributes(); 
-		for(ColumnSchema attr: attrs){
-			schema.addAttribute(attr + "_2"); 
-		}
-		
-		return schema; 
-	}
+	
 	
 	
 	public static SymbolicRelation cartesianProduct(SymbolicRelation x, SymbolicRelation y){
-		SymbolicRelation xy = new SymbolicRelation(cartesianProduct(x.relationSchema, y.relationSchema));
+		RelationSchema newSchema = RelationSchema.cartesianProduct(x.relationSchema, y.relationSchema); 
+		SymbolicRelation xy = new SymbolicRelation(newSchema);
 		
 		for(SymbolicTuple tx : x.getTuples()){
 			for(SymbolicTuple ty : y.getTuples()){
-				SymbolicTuple t = new SymbolicTuple(xy);
+				SymbolicTuple t = new SymbolicTuple(newSchema);
 				for(int i=0; i<xy.relationSchema.size(); i++){
 					if(i < x.relationSchema.size()){
 						t.setColumn(i, tx.getColumn(i));
@@ -135,7 +129,7 @@ public class SymbolicRelation {
 	public static SymbolicRelation copyRelationWithSameVariables(SymbolicRelation x){
 		SymbolicRelation r = new SymbolicRelation(x.relationSchema);
 		for(SymbolicTuple t : x.getTuples()){
-			SymbolicTuple tt = new SymbolicTuple(r);
+			SymbolicTuple tt = new SymbolicTuple(x.relationSchema);
 			for(int i=0; i < r.relationSchema.size(); i++){
 				tt.setColumn(i, t.getColumn(i)); 
 			}
@@ -163,7 +157,7 @@ public class SymbolicRelation {
 		}
 		
 		for(Variable v : varToCount.keySet()){
-			SymbolicTuple t = new SymbolicTuple(r);
+			SymbolicTuple t = new SymbolicTuple(x.relationSchema);
 			t.setColumn(0, v);
 			
 			int count = varToCount.get(v); 
