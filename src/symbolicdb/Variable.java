@@ -23,8 +23,6 @@ public class Variable implements Cloneable{
 	List<ColumnSchema> columnSchemas;  
 	
 	
-	
-	
 	protected Variable(){
 		this.variableName = "v" + numVariables++; 
 		this.setConstraints(new ArrayList<VariableConstraint>()); 
@@ -44,8 +42,8 @@ public class Variable implements Cloneable{
 		addColumnSchema(columnSchema); 
 	}
 	
-	protected void addColumnSchema(ColumnSchema columnSchema){
-		if(columnSchemas.contains(columnSchema) == false){
+	public void addColumnSchema(ColumnSchema columnSchema){
+		if(columnSchemas.contains(columnSchema) == false && columnSchema.isKey()){
 			columnSchemas.add(columnSchema); 
 		}
 	}
@@ -59,21 +57,35 @@ public class Variable implements Cloneable{
 		return finishClone(clone); 
 	}
 	
+	public Variable cloneWithColumnSchemas(){
+		//if we're making a new variable - the places this variable appears should not be 
+		//copied over
+		
+		Variable clone = new Variable();
+		clone = finishClone(clone);
+		
+		for(ColumnSchema columnSchema: columnSchemas){
+			clone.addColumnSchema(columnSchema); 
+		}
+	
+		return clone; 
+	}
+	
+	
 	private Variable finishClone(Variable clone){
 		clone.variableType = this.variableType; 
 		for(VariableConstraint c : constraints){
 			clone.addConstraint(c); 
 		}
 		
-		//if we're making a new variable - the places this variable appears should not be 
-		//copied over
-		//for(ColumnSchema columnSchema: columnSchemas){
-			//clone.addColumnSchema(columnSchema); 
-		//}
 		return clone; 
 	}
+
+	public boolean canBeMerged(Variable other, ColumnSchema exception){
+		return canBeMerged(other, exception, true); 
+	}
 	
-	public boolean canBeMerged(Variable other){
+	public boolean canBeMerged(Variable other, ColumnSchema exception, boolean checkColumnSchemas){
 		if(this == other){
 			return true; 
 		}
@@ -86,16 +98,23 @@ public class Variable implements Cloneable{
 			}
 		}
 		
-		//if same columnSchema and columnSchema isKey
-		for(ColumnSchema columnSchema: columnSchemas){
-			for(ColumnSchema otherColumnSchema: other.columnSchemas){
-				if(otherColumnSchema == columnSchema && columnSchema.isKey()){
-					return false; 
+		if(checkColumnSchemas == true){
+			//if same columnSchema and columnSchema isKey
+			for(ColumnSchema columnSchema: columnSchemas){
+				for(ColumnSchema otherColumnSchema: other.columnSchemas){
+					if(otherColumnSchema == columnSchema && columnSchema.isKey() && columnSchema != exception){
+						return false; 
+					}
 				}
 			}
 		}
 		
 		return true; 
+		
+	}
+	
+	public boolean canBeMerged(Variable other){
+		return canBeMerged(other, null); 
 	}
 	
 	
@@ -230,5 +249,22 @@ public class Variable implements Cloneable{
 		return columnSchemas.size(); 
 	}
 	
+	public String columnSchemasString(){
+		String s = "";
+		for(ColumnSchema c : columnSchemas){
+			s+= c.toLongString() + ","; 
+		}
+		
+		return s; 
+	}
+	
+	public boolean satisfiable(){
+		for(VariableConstraint c : constraints){
+			if(satisfiableWith(c) == false){
+				return false;
+			}
+		}
+		return true; 
+	}
 	
 }

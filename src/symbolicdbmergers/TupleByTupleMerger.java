@@ -6,8 +6,18 @@ import symbolicdb.SymbolicTuple;
 
 public class TupleByTupleMerger {
 
-	public TupleByTupleMerger(){
-		
+	boolean simplyUnion = false; 
+	
+	private TupleByTupleMerger(boolean simplyUnion){
+		this.simplyUnion = simplyUnion; 
+	}
+	
+	public static TupleByTupleMerger BestEffortTupleByTupleMerger(){
+		return new TupleByTupleMerger(false); 
+	}
+	
+	public static TupleByTupleMerger UnionMerger(){
+		return new TupleByTupleMerger(true); 
 	}
 	
 	public SymbolicDB merge(SymbolicDB db1, SymbolicDB db2){
@@ -16,44 +26,40 @@ public class TupleByTupleMerger {
 		
 		SymbolicDB mergeDB  = new SymbolicDB(db1.schema()); 
 		
-		
 		for(SymbolicRelation rel1 : db1Clone.relations()){
-			SymbolicRelation mergeRel = new SymbolicRelation(rel1.relationSchema()); 
-			mergeDB.addSymbolicRelation(mergeRel); 
+			SymbolicRelation mergeRel = mergeDB.getRelation(rel1.relationSchema().getRelationName()); 
 			
-			//add each tuple into db1Clone
+			//add every tuple from db1Clone
 			SymbolicRelation rel2 = db2Clone.getRelation(rel1.relationSchema().getRelationName());
 			for(SymbolicTuple t1 : rel1.getTuples()){
-				for(SymbolicTuple t2: rel2.getTuples()){
-					if(t1.canBeMerged(t2)){
-						System.out.println("can be merged!"); 
-						t1.merge(t2);
-						rel2.removeTuple(t2); 
-						break; 
-					}
-				}
-				mergeRel.addTuple(t1); 
+				mergeDB.addTuple(mergeRel, t1, false); 
 			}
 			
-			//if any tuples in rel2 are remaining - add them too! 
-			for(SymbolicTuple t2 : rel2.getTuples()){
-				mergeRel.addTuple(t2); 
-			}
-		}
-		
-		//if db2 has relations not in db1
-		for(SymbolicRelation rel2 : db2Clone.relations()){
-			if(mergeDB.getRelation(rel2.relationSchema().getRelationName()) == null){
-				SymbolicRelation mergeRel = new SymbolicRelation(rel2.relationSchema()); 
-				mergeDB.addSymbolicRelation(mergeRel); 
-				
-				for(SymbolicTuple t2 : rel2.getTuples()){
-					mergeRel.addTuple(t2); 
+			//add every tuple from db2Clone unless it can be merged with some existing tuple
+			for(SymbolicTuple t2: rel2.getTuples()){
+				boolean mergedIntoTupleFromT1 = false; 
+				if(simplyUnion == false){
+					for(SymbolicTuple t1 : rel1.getTuples()){
+						if(t1.canBeMerged(t2)){
+							t1.merge(t2);
+							
+							for(int i=0; i<t1.arity(); i++){
+								db2Clone.replaceVariableV1WithV2(t1.getColumn(i), t2.getColumn(i)); 
+								mergeDB.replaceVariableV1WithV2(t1.getColumn(i), t2.getColumn(i)); 
+							}
+							
+							mergedIntoTupleFromT1 = true; 
+							break; 
+						}
+					}
+				}
+				if(mergedIntoTupleFromT1 == false){
+					mergeDB.addTuple(mergeRel, t2, false); 
 				}
 			}
-		
 		}
 		
+		mergeDB.ensureFKsSatisfied(); 
 		return mergeDB; 
 		
 	}

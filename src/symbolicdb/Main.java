@@ -1,41 +1,53 @@
 package symbolicdb;
 
-import old.RoundRobinTemplateFilling;
-import old.SimpleView;
-import constraints.ComparisonOp;
-import constraints.NumericConstraint;
+import java.util.ArrayList;
+import java.util.List;
+
+import datagenerator.SymbolicToRealSample;
 import debugging.GraphvizPrinter;
 
 
 import query.QuerySession;
 import queryplan.QueryPlan;
+import queryplan.QueryPlanIllustrator;
+import symbolicdbmergers.TupleByTupleMerger;
 
 public class Main {
 
     public static void main(String[] args) throws Exception{
 		QuerySession qs1 = ExampleQuerySessions.getQS1(); 
+		QueryPlan qp1 = QueryPlan.constructQueryPlan(qs1); 
+		QueryPlanIllustrator illustrator1 = new QueryPlanIllustrator();  
+		illustrator1.illustrate(qp1); 
+		qp1.root().update(false); 
 		
-		QueryPlan qp = QueryPlan.constructQueryPlan(qs1); 
+		QuerySession qs2 = ExampleQuerySessions.getQS2(); 
+		QueryPlan qp2 = QueryPlan.constructQueryPlan(qs2); 
+		QueryPlanIllustrator illustrator2 = new QueryPlanIllustrator();  
+		illustrator2.illustrate(qp2); 
+		qp2.root().update(false); 
 		
-		SymbolicTuple t = SymbolicTuple.constructTupleWithNewVariables(qp.root().schema()); 
-		t.getColumn(1).addConstraint(new NumericConstraint(new ComparisonOp.EQUALS(), 2)); 
-		qp.root().request(t, true, true);
-		qp.root().update(true); 
-		
+		SymbolicDB wellMergedDB = TupleByTupleMerger.BestEffortTupleByTupleMerger().merge(qp1.db(), qp2.db()); 
+		SymbolicDB unionMergedDB = TupleByTupleMerger.UnionMerger().merge(qp1.db(), qp2.db());
+			
 		System.out.println("$$$$$$$$$$$$$$$$$$$$$$"); 
+		 
 		
-		GraphvizPrinter printer = new GraphvizPrinter("/Users/nodira/Desktop/queryplan.dot", qp); 
-		printer.printDot(); 
+		GraphvizPrinter p1 = new GraphvizPrinter("/Users/nodira/Desktop/qp1.dot");
+		p1.printDot(qp1);
+		
+		GraphvizPrinter p2 = new GraphvizPrinter("/Users/nodira/Desktop/qp2.dot");
+		p2.printDot(qp2);
+		
+		GraphvizPrinter pBE = new GraphvizPrinter("/Users/nodira/Desktop/besteffort.dot"); 
+		pBE.printDot(wellMergedDB); 
+		
+		GraphvizPrinter pUnion = new GraphvizPrinter("/Users/nodira/Desktop/union.dot"); 
+		pUnion.printDot(unionMergedDB); 
+		
+		SymbolicToRealSample strs = new SymbolicToRealSample(wellMergedDB, "imdb-conn.properties"); 
+		//strs.printSample(); 
 		
 	}
-    
-
-	
-		
-		
-		
-		
 	
 }
-
-

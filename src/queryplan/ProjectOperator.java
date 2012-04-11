@@ -11,10 +11,10 @@ public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
 	
 	List<Integer> selectedColumns; 
 	
-	public ProjectOperator(QueryOperator underlyingOperator, List<Integer> selectedColumns){
+	public ProjectOperator(QueryOperator underlyingOperator, List<Integer> selectedColumns, QueryPlan queryPlan){
 		this.underlyingOperator = underlyingOperator; 
 		this.selectedColumns = selectedColumns; 
-		
+		this.queryPlan = queryPlan;
 		this.currentSchema = new RelationSchema(""); 
 		for(Integer selectedColumn: selectedColumns){
 			this.currentSchema.addAttribute(underlyingOperator.currentSchema.getAttribute(selectedColumn).columnName()); 
@@ -26,36 +26,43 @@ public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
 	@Override
 	public void update(boolean print) {
 		underlyingOperator.update(print);
+		this.setIntermediateResults(applyOperator(underlyingOperator.getIntermediateResults())); 
 		
-		this.setIntermediateResults(new ArrayList<SymbolicTuple>()); 
-		
-		for(SymbolicTuple t : underlyingOperator.getIntermediateResults()){
+	}
+	
+	public List<SymbolicTuple> applyOperator(List<SymbolicTuple> tuples){
+		List<SymbolicTuple> result = new ArrayList<SymbolicTuple>();
+		for(SymbolicTuple t : tuples){
 			SymbolicTuple projectedT = new SymbolicTuple(currentSchema); 
 			for(int i=0; i<selectedColumns.size(); i++){
 				projectedT.setColumn(i, t.getColumn(selectedColumns.get(i))); 
 			}
-			getIntermediateResults().add(projectedT); 
-		}
+			result.add(projectedT); 
+		}	
+		return result; 
 	}
-
-	@Override
-	public void request(SymbolicTuple tuple, boolean mustBeNewTuple, boolean print) {
-		if(print){
-			printDebugInfo(tuple, "request"); 
+	
+	private SymbolicTuple[] unprojected(SymbolicTuple[] tuples){
+		SymbolicTuple[] unprojected = new SymbolicTuple[tuples.length];
+		
+		for(int x=0; x < tuples.length; x++){
+			SymbolicTuple tuple = tuples[x];
+			
+			SymbolicTuple unprojectedT = new SymbolicTuple(underlyingOperator.currentSchema); 
+			for(int i=0; i<selectedColumns.size(); i++){
+				unprojectedT.setColumn(selectedColumns.get(i), tuple.getColumn(i)); 
+			}
+			//fill the nulls with new variables
+			for(int i=0; i<unprojectedT.arity(); i++){
+				if(unprojectedT.getColumn(i) == null){
+					Variable v = new Variable(unprojectedT.underlyingSchema().getAttribute(i)); 
+					unprojectedT.setColumn(i, v); 
+				}
+			}
+			unprojected[x] = unprojectedT; 
 		}
 		
-		SymbolicTuple unprojectedT = new SymbolicTuple(underlyingOperator.currentSchema); 
-		for(int i=0; i<selectedColumns.size(); i++){
-			unprojectedT.setColumn(selectedColumns.get(i), tuple.getColumn(i)); 
-		}
-		//fill the nulls with new variables
-		for(int i=0; i<unprojectedT.arity(); i++){
-			if(unprojectedT.getColumn(i) == null){
-				Variable v = new Variable(unprojectedT.underlyingSchema().getAttribute(i)); 
-				unprojectedT.setColumn(i, v); 
-			}
-		}
-		underlyingOperator.request(unprojectedT, mustBeNewTuple, print); 
+		return unprojected; 
 	}
 
 	@Override
@@ -63,6 +70,27 @@ public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
 		localVariableRenaming(v1, v2); 
 		underlyingOperator.replaceVariableV1WithV2(v1, v2); 
 	}
+	
+	public String selectedColumnsString(){
+		StringBuilder sb = new StringBuilder();
+		for(int i=0; i<currentSchema.size(); i++){
+			sb.append(currentSchema.getAttribute(i) + ", "); 
+		}
+		
+		if(sb.length() > 0){
+			sb.delete(sb.length() - 2, sb.length()); 
+		}
+		return sb.toString(); 
+	}
+
+	@Override
+	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
+		SymbolicTuple[] requests = unprojected(tuples); 
+		return underlyingOperator.translateToAtomicAdds(requests); 
+	}
+
+	
+	
 
 	
 	

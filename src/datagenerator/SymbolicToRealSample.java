@@ -2,6 +2,7 @@ package datagenerator;
 
 import java.io.FileInputStream;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -126,9 +127,13 @@ public class SymbolicToRealSample {
 		}
 		
 		
-		String query = "use imdb; select top " + NUM_INSTANCES_DESIRED + "  * \n" + fromClause.toString() + whereClause.toString(); 
+		//String query = "use imdb; select top " + NUM_INSTANCES_DESIRED + "  * \n" + fromClause.toString() + whereClause.toString(); 
+		String query = "select * \n" + fromClause.toString() + whereClause.toString() + "\n LIMIT " + NUM_INSTANCES_DESIRED; 
+		
 		System.out.println(query); 
 		Connection connToDB = createConn(); 
+		
+		    
 		try{
 			Statement stmt = connToDB.createStatement();
 			ResultSet rs = stmt.executeQuery(query); 

@@ -46,11 +46,11 @@ public final class IMDBSchemaWithKeys {
         director_genre.addAttribute("prob");
         schema.add(director_genre);
         
-        schema.addForeignKey(casts.relationName, "pid", actor.relationName, "id"); 
-        schema.addForeignKey(casts.relationName, "mid", movie.relationName, "id");
-        schema.addForeignKey(movie_directors.relationName, "did", directors.relationName, "id");
-        schema.addForeignKey(movie_directors.relationName, "mid", movie.relationName, "id"); 
-        schema.addForeignKey(genre.relationName, "mid", movie.relationName, "id"); 
+        schema.addForeignKey(casts.getAttribute("pid"), actor.getAttribute("id")); 
+        schema.addForeignKey(casts.getAttribute("mid"), movie.getAttribute("id"));
+        schema.addForeignKey(movie_directors.getAttribute("did"), directors.getAttribute("id"));
+        schema.addForeignKey(movie_directors.getAttribute("mid"), movie.getAttribute("id")); 
+        schema.addForeignKey(genre.getAttribute("mid"), movie.getAttribute("id")); 
         
         return schema;
     }

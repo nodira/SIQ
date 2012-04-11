@@ -17,8 +17,12 @@ import queryplan.TableOperator;
 
 import schema.ColumnSchema;
 import schema.RelationSchema;
+import symbolicdb.SymbolicDB;
+import symbolicdb.SymbolicRelation;
 import symbolicdb.SymbolicTuple;
 import symbolicdb.Variable;
+
+import org.apache.commons.lang3.StringEscapeUtils; 
 
 /***
  * This class prints out a query plan to a file in graphviz's .dot format. 
@@ -28,14 +32,14 @@ import symbolicdb.Variable;
  */
 public class GraphvizPrinter {
 	BufferedWriter bw; 
-	QueryOperator root;
 	Hashtable<Variable,String> var2Color; 
 	Hashtable<QueryOperator, String> node2Id; 
 	Hashtable<String, Integer> nodeType2Count; 
 	
 	String file, tempFile; 
 	
-	public GraphvizPrinter(String file, QueryPlan plan){
+	
+	public GraphvizPrinter(String file){
 		try{
 			this.file = file;
 			this.tempFile = file + "1"; 
@@ -44,7 +48,6 @@ public class GraphvizPrinter {
 			
 			FileWriter fw = new FileWriter(tempFile, true); 
 			this.bw = new BufferedWriter(fw); 
-			this.root = plan.root(); 
 		}catch(Exception ex){
 			ex.printStackTrace(); 
 		}
@@ -75,7 +78,7 @@ public class GraphvizPrinter {
 		return null; 
 	}
 	
-	public void printDot(){
+	public void printDot(SymbolicDB db){
 		try{
 			writeLine("digraph G {");
 			
@@ -83,14 +86,44 @@ public class GraphvizPrinter {
 			this.node2Id 		= new Hashtable<QueryOperator, String>(); 
 			this.nodeType2Count = new Hashtable<String, Integer>(); 
 			
-			dot(this.root, var2Color); 
+			//print underlying symbolic relations first
+			writeLine("{rank=sink;"); 
+			writeSymbolicDB(db); 
+			writeLine("}"); 
+			bw.close(); 
+			
+			File f1 = new File(tempFile);
+			File f = new File(file);
+			f1.renameTo(f); 
+			
+		}catch(Exception ex){
+			ex.printStackTrace(); 
+		}
+		
+		
+	}
+	
+	public void printDot(QueryPlan qp){
+		try{
+			writeLine("digraph G {");
+			
+			this.var2Color 		= new Hashtable<Variable, String>(); 
+			this.node2Id 		= new Hashtable<QueryOperator, String>(); 
+			this.nodeType2Count = new Hashtable<String, Integer>(); 
+			
+			//print underlying symbolic relations first
+			writeLine("{rank=sink;"); 
+			writeSymbolicDB(qp.db()); 
+			writeLine("}"); 
+			
+			dot(qp.root(), var2Color); 
 			
 			//lists the variables in the query plan & the corresponding constraints
 			writeLine("{rank=sink; Legend [margin=0, shape = none, label=<<table BGCOLOR=\"GREY\"><tr><td colspan=\"2\">Constraints </td></tr>");
 			for(Variable v : var2Color.keySet()){
 				if(v.getNumConstraints() > 0){
 					if(v.hasDoubleValue() == false && v.hasStringValue() == false){
-						writeLine("<tr><td bgcolor=\""  + var2Color.get(v) +"\" >" + v.getVariableName() + "</td><td>" + v.getConstraintString() + "</td></tr>"); 
+						writeLine("<tr><td bgcolor=\""  + var2Color.get(v) +"\" >" + v.getVariableName() + "</td><td>" + StringEscapeUtils.escapeHtml4(v.getConstraintString()) + "</td></tr>"); 
 					}
 				}
 			}
@@ -99,7 +132,6 @@ public class GraphvizPrinter {
 			writeLine("}\n"); 
 			bw.close(); 
 			
-
 			File f1 = new File(tempFile);
 			File f = new File(file);
 			f1.renameTo(f); 
@@ -123,6 +155,21 @@ public class GraphvizPrinter {
 		return node2Id.get(node); 
 	}
 	
+	private String nodeLabel(QueryOperator node){
+		if(node instanceof CartesianOperator){
+			return " &#215; ";
+		}else if(node instanceof FilterOperator){
+			return " &sigma;    [" + ((FilterOperator)node).predicateString() +"]"; 
+		}else if(node instanceof GroupbyCountOperator){
+			return " &gamma;    [" + ((GroupbyCountOperator)node).groupByColsString() + ", count(*)] "; 
+		}else if(node instanceof ProjectOperator){
+			return " &Pi; " + ((ProjectOperator) node).selectedColumnsString(); 
+		}else{
+			return nodeId(node); 
+		}
+		
+	}
+	
 	private String nodeContent(QueryOperator node, Hashtable<Variable, String> var2Color){
 		StringBuilder sbTable = new StringBuilder(); 
 		sbTable.append("<<table>"); 
@@ -137,44 +184,17 @@ public class GraphvizPrinter {
 		if(node instanceof TableOperator){
 			sbTable.append("<tr><td colspan=\"" + arity + "\">"  + ((TableOperator) node).getUnderlyingRelation().relationSchema().getRelationName() + "</td></tr>"); 
 		}else{
-			sbTable.append("<tr><td colspan=\"" + arity + "\">" + nodeId(node) + "</td></tr>"); 
+			sbTable.append("<tr><td colspan=\"" + arity + "\">" + nodeLabel(node) + "</td></tr>"); 
 		}
 		
-		//if filter - print out predicate
-		if(node instanceof FilterOperator){
-			sbTable.append("<tr><td colspan=\"" + arity + "\">" + ((FilterOperator)node).predicateString() + "</td></tr>"); 
-		}
+		
 		
 		//print out schema
-		sbTable.append("<tr>"); 
-		RelationSchema schema = node.schema(); 
-		for(ColumnSchema c : schema.getAttributes()){
-			sbTable.append("<td>" + c.columnName() + "</td>"); 
-		}
-		sbTable.append("</tr>"); 
+		sbTable.append(schemaToTableRow(node.schema())); 
+		
 				
 		//print intermediate results
-		for(SymbolicTuple t : intResults){
-			sbTable.append("<tr>"); 
-			
-			for(int i=0; i<t.arity(); i++){
-				Variable v = t.getColumn(i); 
-				if(var2Color.containsKey(v) == false){
-					var2Color.put(v, Colors.nextColor()); 
-				}
-				
-				//if equality constraint - just print out value. 
-				if(v.hasDoubleValue()){
-					sbTable.append("<td bgcolor=\"" + var2Color.get(v) +"\">" + v.getDoubleValue() + "</td>"); 
-				}else if(v.hasStringValue()){
-					sbTable.append("<td bgcolor=\"" + var2Color.get(v) +"\">" + v.getStringValue() + "</td>"); 
-				}else{
-					sbTable.append("<td bgcolor=\"" + var2Color.get(v) +"\">" + v.getVariableName() + "</td>"); 
-				}
-				
-			}
-			sbTable.append("</tr>"); 
-		}
+		sbTable.append(tuplesToTableRows(intResults)); 
 		sbTable.append("</table>>"); 
 		return sbTable.toString(); 
 	}
@@ -194,6 +214,57 @@ public class GraphvizPrinter {
 			dot(rc, var2Color); 
 		}
 		writeLine(nodeId(node) + " [shape=box, label=" +nodeContent(node, var2Color)+ "];"); 	
+	}
+	
+	
+	private void writeSymbolicDB(SymbolicDB db) throws Exception{
+		for(SymbolicRelation rel : db.relations()){
+			writeLine(rel.relationSchema().getRelationName() + "[shape=box, label=<<table>" + symbolicRelToTableRows(rel) + "</table>>];"); 
+		}
+	}
+	
+	private String symbolicRelToTableRows(SymbolicRelation rel){
+		List<SymbolicTuple> tuples = rel.getTuples();
+		String tableNameRow = "<tr><td colspan=\"" + rel.arity() + "\">"  + rel.relationSchema().getRelationName() + "</td></tr>"; 
+		return tableNameRow + schemaToTableRow(rel.relationSchema()) + tuplesToTableRows(tuples); 
+	}
+	
+	private String schemaToTableRow(RelationSchema schema){
+		StringBuilder sbTable = new StringBuilder("<tr>"); 
+		for(ColumnSchema c : schema.getAttributes()){
+			sbTable.append("<td>" + c.columnName() + "</td>"); 
+		}
+		sbTable.append("</tr>"); 
+		
+		return sbTable.toString(); 
+	}
+	
+	private String tuplesToTableRows(List<SymbolicTuple> rows){
+		StringBuilder sbTable = new StringBuilder(); 
+		
+		//print intermediate results
+		for(SymbolicTuple t : rows){
+			sbTable.append("<tr>"); 
+			
+			for(int i=0; i<t.arity(); i++){
+				Variable v = t.getColumn(i); 
+				if(var2Color.containsKey(v) == false){
+					var2Color.put(v, Colors.nextColor()); 
+				}
+				
+				//if equality constraint - just print out value. 
+				if(v.hasDoubleValue()){
+					sbTable.append("<td bgcolor=\"" + var2Color.get(v) +"\">" + v.getVariableName() + ": " + v.getDoubleValue() + "</td>"); 
+				}else if(v.hasStringValue()){
+					sbTable.append("<td bgcolor=\"" + var2Color.get(v) +"\">" + v.getVariableName() + ": " + v.getStringValue() + "</td>"); 
+				}else{
+					sbTable.append("<td bgcolor=\"" + var2Color.get(v) +"\">" + v.getVariableName() + "</td>"); 
+				}
+				
+			}
+			sbTable.append("</tr>"); 
+		}
+		return sbTable.toString(); 
 	}
 	
 }

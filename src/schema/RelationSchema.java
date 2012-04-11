@@ -18,6 +18,10 @@ public final class RelationSchema {
 		attributes.add(new ColumnSchema(this, attrName)); 
 	}
 	
+	public void addAttribute(String attrName, boolean isKey){
+		attributes.add(new ColumnSchema(this, attrName, isKey)); 
+	}
+	
 	public void addKeyAttribute(String attribute){
 		attributes.add(new ColumnSchema(this, attribute, true)); 
 	}
@@ -45,6 +49,10 @@ public final class RelationSchema {
 	
 	public ColumnSchema getAttribute(int i){
 		return attributes.get(i); 
+	}
+	
+	public ColumnSchema getAttribute(String attrName){
+		return getAttribute(getAttributeIndex(attrName)); 
 	}
 
     public int size() { return attributes.size(); }

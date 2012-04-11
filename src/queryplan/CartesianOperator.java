@@ -1,5 +1,6 @@
 package queryplan;
 import java.util.ArrayList;
+import java.util.List;
 
 import schema.ColumnSchema;
 import schema.RelationSchema;
@@ -9,9 +10,10 @@ import symbolicdb.Variable;
 
 public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 	
-	public CartesianOperator(QueryOperator o1, QueryOperator o2){
+	public CartesianOperator(QueryOperator o1, QueryOperator o2, QueryPlan queryPlan){
 		this.o1 = o1; 
 		this.o2 = o2;
+		this.queryPlan = queryPlan; 
 		
 		//construct schema
 		this.currentSchema = new RelationSchema(""); 
@@ -35,11 +37,14 @@ public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 	public void update(boolean print) {
 		o1.update(print);
 		o2.update(print); 
+		setIntermediateResults(cartesianProduct(o1.getIntermediateResults(), o2.getIntermediateResults())); 
+	}
+	
+	private List<SymbolicTuple> cartesianProduct(List<SymbolicTuple> tuples1, List<SymbolicTuple> tuples2){
+		List<SymbolicTuple> result = new ArrayList<SymbolicTuple>();
 		
-		setIntermediateResults(new ArrayList<SymbolicTuple>()); 
-		
-		for(SymbolicTuple tx : o1.getIntermediateResults()){
-			for(SymbolicTuple ty : o2.getIntermediateResults()){
+		for(SymbolicTuple tx : tuples1){
+			for(SymbolicTuple ty : tuples2){
 				SymbolicTuple t = new SymbolicTuple(currentSchema);
 				for(int i=0; i<t.arity(); i++){
 					if(i < tx.arity()){
@@ -48,38 +53,97 @@ public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 						t.setColumn(i, ty.getColumn(i-tx.arity())); 
 					}
 				}
-				getIntermediateResults().add(t);
+				result.add(t);
 			} 
 		}
+		
+		return result; 
 		
 	}
 
 
-
-	@Override
-	public void request(SymbolicTuple tuple, boolean mustBeNewTuple, boolean print) {
-		if(print){
-			printDebugInfo(tuple, "request"); 
-		}
+	private SymbolicTuple[] leftsOrRights(boolean getLefts, SymbolicTuple[] tuples){
+		SymbolicTuple[] sideTuples = new SymbolicTuple[tuples.length]; 
 		
-		SymbolicTuple t1 = new SymbolicTuple(o1.currentSchema); 
-		SymbolicTuple t2 = new SymbolicTuple(o2.currentSchema); 
-		
-		for(int i=0; i< tuple.arity(); i++){
-			if(i < t1.arity()){
-				t1.setColumn(i, tuple.getColumn(i)); 
+		for(int x=0; x<tuples.length; x++){
+			SymbolicTuple tuple = tuples[x]; 
+			
+			SymbolicTuple t1 = new SymbolicTuple(o1.currentSchema); 
+			SymbolicTuple t2 = new SymbolicTuple(o2.currentSchema); 
+			
+			for(int i=0; i< tuple.arity(); i++){
+				if(i < t1.arity()){
+					t1.setColumn(i, tuple.getColumn(i)); 
+				}else{
+					t2.setColumn(i-t1.arity(), tuple.getColumn(i)); 
+					
+				}
+			}
+			
+			if(getLefts==true){
+				sideTuples[x] = t1;
 			}else{
-				t2.setColumn(i-t1.arity(), tuple.getColumn(i)); 
-				
+				sideTuples[x] = t2; 
 			}
 		}
 		
-		o1.request(t1, mustBeNewTuple, print);
-		o2.request(t2, mustBeNewTuple, print); 
+		return sideTuples; 
+	}
+	
+	private SymbolicTuple[] minimizeList(SymbolicTuple[] l, boolean doClone){
+		List<SymbolicTuple> uniqTuples = new ArrayList<SymbolicTuple>();
+		for(SymbolicTuple t : l){
+			if(doClone){
+				t = t.cloneWithColumnSchemas(); 
+			}
+			
+			boolean merged = false;
+			for(SymbolicTuple t1 : uniqTuples){
+				if(t.canBeMerged(t1)){
+					merged = true; 
+					t1.merge(t); 
+					for(int i=0; i<t.arity(); i++){
+						replaceVariableV1WithV2(t.getColumn(i), t1.getColumn(i)); 
+					}
+					break; 
+				}
+			}
+			if(merged == false){
+				uniqTuples.add(t); 
+			}
+		}
 		
-		//do we need to check if it exists here? or can this be done at the very bottom level? 
+		SymbolicTuple[] uniq = new SymbolicTuple[uniqTuples.size()];
+		for(int i=0; i<uniqTuples.size(); i++){
+			uniq[i] = uniqTuples.get(i); 
+		}
+		return uniq; 
+	}
+
+	@Override
+	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
 		
+		List<SymbolicTuple> atomicAdds = new ArrayList<SymbolicTuple>();
 		
+		SymbolicTuple[] lefts  = leftsOrRights(true, tuples);
+		SymbolicTuple[] rights = leftsOrRights(false, tuples);
+		
+		atomicAdds.addAll(o1.translateToAtomicAdds(lefts));
+		atomicAdds.addAll(o2.translateToAtomicAdds(rights));
+		
+		return atomicAdds; 
+		
+	}
+
+	@Override
+	public List<SymbolicTuple> resultOf(List<SymbolicTuple> tuples) {
+		List<SymbolicTuple> result1 = o1.resultOf(tuples); 
+		System.out.println(result1.get(0).underlyingSchema());
+		
+		List<SymbolicTuple> result2 = o2.resultOf(tuples); 
+		System.out.println(result2.get(0).underlyingSchema());
+		
+		return cartesianProduct(result1, result2); 
 	}
 
 	

@@ -20,6 +20,10 @@ public class ColumnSchema {
 		return isKey; 
 	}
 	
+	public void setKey(boolean isKey){
+		this.isKey = isKey; 
+	}
+	
 	public String columnName(){
 		return columnName; 
 	}
@@ -29,6 +33,10 @@ public class ColumnSchema {
 	}
 	
 	public String toLongString(){
-		return relationSchema.getRelationName() + "." + columnName; 
+		return relationSchema.getRelationName() + "." + columnName + (isKey?"[key]":""); 
+	}
+	
+	public RelationSchema relationSchema(){
+		return relationSchema; 
 	}
 }

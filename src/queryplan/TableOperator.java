@@ -1,11 +1,12 @@
 package queryplan;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
-import old.TemplateTuple;
 
 import schema.ColumnSchema;
 import schema.RelationSchema;
+import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicRelation;
 import symbolicdb.SymbolicTuple;
 import symbolicdb.Variable;
@@ -13,11 +14,15 @@ import symbolicdb.Variable;
 
 public class TableOperator extends QueryOperator{
 	
+	private SymbolicDB underlyingDB; 
 	private SymbolicRelation underlyingRelation; 
 	
 	
-	public TableOperator(SymbolicRelation underlyingRelation){
-		this.setUnderlyingRelation(underlyingRelation);
+	public TableOperator(SymbolicDB underlyingDB, String relationName, QueryPlan queryPlan){
+		this.underlyingDB = underlyingDB; 
+		this.underlyingRelation = underlyingDB.getRelation(relationName);
+		this.queryPlan = queryPlan;
+		
 		this.currentSchema = new RelationSchema(""); 
 		for(ColumnSchema cs : underlyingRelation.relationSchema().getAttributes()){
 			this.currentSchema.addAttribute(underlyingRelation.relationSchema().getRelationName() + "_" + cs.columnName()); 
@@ -29,56 +34,85 @@ public class TableOperator extends QueryOperator{
 	@Override
 	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
 		localVariableRenaming(v1, v2); 
-		
+		underlyingDB.replaceVariableV1WithV2(v1, v2); 
 	}
 
 	@Override
 	public void update(boolean print) {
 		this.setIntermediateResults(new ArrayList<SymbolicTuple>());
 		for(SymbolicTuple t : getUnderlyingRelation().getTuples()){
-			this.getIntermediateResults().add(t); 
-		}
-		
-		
+			SymbolicTuple tRenamed = renameFromUnderlyingSchema(t); 
+			this.getIntermediateResults().add(tRenamed);  
+		}	
 	}
 
+	
+	private SymbolicTuple renameFromUnderlyingSchema(SymbolicTuple tuple){
+		SymbolicTuple tupleRenamed = SymbolicTuple.constructTupleWithNewVariables(currentSchema);
+		for(int i=0; i<tuple.arity(); i++){
+			tupleRenamed.setColumn(i, tuple.getColumn(i)); 
+		}
+		return tupleRenamed; 
+	}
+	
+	private SymbolicTuple renameToUnderlyingSchema(SymbolicTuple tuple){
+		SymbolicTuple tupleRenamed = SymbolicTuple.constructTupleWithNewVariables(underlyingRelation.relationSchema());
+		for(int i=0; i<tuple.arity(); i++){
+			tupleRenamed.setColumn(i, tuple.getColumn(i)); 
+		}
+		return tupleRenamed; 
+	}
+	
+	private SymbolicTuple addTupleWithRenaming(SymbolicTuple tuple){
+		SymbolicTuple tupleRenamed = renameToUnderlyingSchema(tuple); 
+		underlyingDB.addTuple(underlyingRelation, tupleRenamed);  
+		
+		return tupleRenamed; 
+	}
+	
+	public SymbolicRelation getUnderlyingRelation() {
+		return underlyingRelation;
+	}
+
+	//this is BEST EFFORT. if we cant add all - add some subset. 
 	@Override
-	public void request(SymbolicTuple tuple, boolean mustBeNewTuple, boolean print) {
-		if(print){
-			printDebugInfo(tuple, "request"); 
+	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
+		List<SymbolicTuple> atomicAdds = new ArrayList<SymbolicTuple>();
+		for(SymbolicTuple tuple : tuples){
+			SymbolicTuple renamedTuple = renameToUnderlyingSchema(tuple);  
+			atomicAdds.add(renamedTuple); 
 		}
 		
-		if(mustBeNewTuple == true){
-			getUnderlyingRelation().addTuple(tuple); 
-			//intermediateResults.add(SymbolicTuple.constructTupleWithNewVariables(currentSchema)); 
-		}else{//try to merge with existing tuple
-			boolean successfullyMergedWithExistingTuple = false; 
-			for(SymbolicTuple t: getUnderlyingRelation().getTuples()){
-				if(t.canBeMerged(tuple)){
-					t.merge(tuple); 
-					for(int i=0; i<t.arity(); i++){
-						replaceVariableV1WithV2(tuple.getColumn(i), t.getColumn(i)); 
+		List<SymbolicTuple> dontAdd = new ArrayList<SymbolicTuple>();
+		
+		//if breaks primary key? 
+		for(int a=0; a<underlyingRelation.arity(); a++){
+			if(underlyingRelation.relationSchema().getAttribute(a).isKey()){
+				HashSet<Variable> seen = new HashSet<Variable>();
+				for(SymbolicTuple t: atomicAdds){
+					if(seen.contains(t.getColumn(a))){
+						dontAdd.add(t); 
+					}else{
+						seen.add(t.getColumn(a));
 					}
-					successfullyMergedWithExistingTuple = true; 
-					break; 
 				}
 			}
 			
-			//if nothing matches - add new tuple
-			if(successfullyMergedWithExistingTuple == false){
-				request(tuple, true, print); 
-				//intermediateResults.add(SymbolicTuple.constructTupleWithNewVariables(currentSchema)); 
-			}
 		}
 		
+		atomicAdds.removeAll(dontAdd); 
+		return atomicAdds ; 
 	}
 
-	public void setUnderlyingRelation(SymbolicRelation underlyingRelation) {
-		this.underlyingRelation = underlyingRelation;
-	}
-
-	public SymbolicRelation getUnderlyingRelation() {
-		return underlyingRelation;
+	@Override
+	public List<SymbolicTuple> resultOf(List<SymbolicTuple> tuples) {
+		List<SymbolicTuple> tuplesForThisTable = new ArrayList<SymbolicTuple>();
+		for(SymbolicTuple tuple : tuples){
+			if(tuple.underlyingSchema() == underlyingRelation.relationSchema()){
+				tuplesForThisTable.add(renameFromUnderlyingSchema(tuple));
+			}
+		}
+		return tuplesForThisTable; 
 	}
 	
 	

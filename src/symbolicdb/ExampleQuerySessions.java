@@ -22,7 +22,7 @@ public class ExampleQuerySessions {
 		qs.addSnippets(new F_TableInFrom("actor")); 
 		
 		//step 2
-		qs.addSnippets(new F_PredicateInWhere("actor", "gender", null, "'f'", "=")); 
+		qs.addSnippets(new F_PredicateInWhere("actor", "gender", null, "'F'", "=")); 
 		
 		//step 3
 		qs.addSnippets(new F_TableInFrom("casts")); 

@@ -1,22 +1,35 @@
 package symbolicdb;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
-import old.SimpleView;
+import edu.washington.db.cqms.common.sqlparser.Pair;
 
+import queryplan.AddAction;
+import queryplan.Configuration;
+
+import schema.ColumnSchema;
 import schema.DBSchema;
+import schema.DBSchema.SimpleForeignKey;
+import schema.RelationSchema;
 
 
 public class SymbolicDB {
 	List<SymbolicRelation> relations = new ArrayList<SymbolicRelation>(); 
 	DBSchema schema; 
+	Hashtable<RelationSchema, SymbolicRelation> schema2Rel = new Hashtable<RelationSchema, SymbolicRelation>(); 
 	
 	public SymbolicDB(DBSchema schema){
 		this.schema = schema; 
+		for(RelationSchema rSchema : schema.getRelations()){
+			SymbolicRelation rel = new SymbolicRelation(rSchema); 
+			this.relations.add(rel); 
+			schema2Rel.put(rSchema, rel); 
+		}
 	}
 	
 	public List<SymbolicRelation> relations(){
@@ -27,31 +40,24 @@ public class SymbolicDB {
 		return schema; 
 	}
 	
-	public SymbolicRelation getRelation(String relName){
-		for(SymbolicRelation rel: relations){
-			if(rel.relationSchema().getRelationName().equals(relName)){
+	public SymbolicRelation getRelation(String relationName){
+		for(SymbolicRelation rel : relations){
+			if(rel.relationSchema().getRelationName().equals(relationName)){
 				return rel; 
 			}
 		}
 		return null; 
 	}
 
-	public void addSymbolicRelation(SymbolicRelation rel){
-		this.relations.add(rel); 
-	}
-	
-	/*public static SymbolicDB constructDB(SimpleView lastView){
-		SymbolicDB db = new SymbolicDB(lastView.schema);
-		
-		//find base tables
-		List<SimpleView> baseTables = lastView.findBaseTables();
-		for(SimpleView baseTable : baseTables){
-			db.addSymbolicRelation(baseTable.getSymbolicRelation()); 
+
+	private void setSymbolicRelation(SymbolicRelation rel){
+		for(int i =0; i<relations.size(); i++){
+			if(relations.get(i).relationSchema() == rel.relationSchema()){
+				relations.set(i, rel); 
+			}
 		}
 		
-		return db; 
-	}*/
-	
+	}
 	
 	public String toString(){
 		StringBuilder sb = new StringBuilder();
@@ -66,15 +72,21 @@ public class SymbolicDB {
 		
 	}
 	
-	public SymbolicDB clone(){
+	public Pair<SymbolicDB, Hashtable<Variable, Variable>> cloneAndReturnMapping(){
 		Hashtable<Variable, Variable> var2VarClone = new Hashtable<Variable, Variable>(); 
+		
 		SymbolicDB clone = new SymbolicDB(this.schema); 
+		
 		for(SymbolicRelation rel : relations){
-			clone.addSymbolicRelation(rel.cloneAccordingToMap(var2VarClone)); 
+			clone.setSymbolicRelation(rel.cloneAccordingToMap(var2VarClone)); 
 		}
-		return clone; 
+		
+		return new Pair<SymbolicDB, Hashtable<Variable, Variable>>(clone, var2VarClone); 
 	}
 	
+	public SymbolicDB clone(){
+		return cloneAndReturnMapping().x(); 
+	}
 
 	
 	public String prettyPrint(){
@@ -96,12 +108,229 @@ public class SymbolicDB {
 		
 		SymbolicDB simplifiedClone = new SymbolicDB(this.schema); 
 		for(SymbolicRelation rel : relations){
-			simplifiedClone.addSymbolicRelation(rel.cloneAccordingToMap(simplifiedVars)); 
+			simplifiedClone.setSymbolicRelation(rel.cloneAccordingToMap(simplifiedVars)); 
 		}
 		
 		return simplifiedClone.toString(); 
 		
 	}
+	
+	public void addTuple(SymbolicRelation rel, SymbolicTuple t){
+		addTuple(rel, t, true); 
+	}
+	
+	public void addTuple(SymbolicTuple t){
+		addTuple(getRelation(t.underlyingSchema().getRelationName()), t); 
+	}
+	
+	public void addTuple(SymbolicTuple t, boolean recursively){
+		addTuple(getRelation(t.underlyingSchema().getRelationName()), t, recursively); 
+	}
+	
+	public void mergeAdd(SymbolicTuple toAdd, SymbolicTuple existingTuple){
+		existingTuple.merge(toAdd); 
+		for(int i=0; i<toAdd.arity(); i++){
+			replaceVariableV1WithV2(toAdd.getColumn(i), existingTuple.getColumn(i)); 
+		}
+	}
+	
+	public List<SymbolicTuple> atomicTuplesFor(SymbolicTuple tuple){
+		Queue<SymbolicTuple> tuplesWanted = new LinkedList<SymbolicTuple>(); 
+		tuplesWanted.add(tuple); 
+		
+		List<SymbolicTuple> tuplesNeeded = new ArrayList<SymbolicTuple>(); 
+		
+		while(tuplesWanted.isEmpty() == false){
+			SymbolicTuple t = tuplesWanted.remove();
+			tuplesNeeded.add(t); 
+			
+			SymbolicRelation rel = getRelation(t.underlyingSchema.getRelationName()); 
+			
+			for(SimpleForeignKey k : schema.getForeignKeys()){
+				if(k.col1().relationSchema() == rel.relationSchema()){
+					SymbolicRelation otherRel = schema2Rel.get(k.col2().relationSchema());
+					String col1 = k.col1().columnName(); 
+					String col2 = k.col2().columnName(); 
+					
+					SymbolicTuple newTuple = SymbolicTuple.constructTupleWithNewVariables(otherRel.relationSchema());
+					newTuple.setColumn(col2, t.getColumn(col1));
+					
+					tuplesWanted.add(newTuple); 
+				}
+			}
+		}
+		
+		System.out.println("atomicTuplesFor(" + tuple + "[" +  tuple.underlyingSchema.getRelationName() + "]):");
+		for(SymbolicTuple t: tuplesNeeded){
+			System.out.println("   " + t + "[" +  t.underlyingSchema.getRelationName() + "]):");
+			
+		}
+		
+		return tuplesNeeded; 
+		
+	}
+	
+	
+	public void addTuple(SymbolicRelation rel, SymbolicTuple t, boolean addRecursively){
+		rel.addTuple(t); 
+		
+		if(addRecursively){
+			//add tuples into the dependent tables too
+			for(SimpleForeignKey k : schema.getForeignKeys()){
+				if(k.col1().relationSchema() == rel.relationSchema()){
+					SymbolicRelation otherRel = schema2Rel.get(k.col2().relationSchema());
+					String col1 = k.col1().columnName(); 
+					String col2 = k.col2().columnName(); 
+					
+					boolean matchFound = false; 
+					
+					//check if it already has a matching tuple there 
+					for(SymbolicTuple potentialMatch : otherRel.getTuples()){
+						if(potentialMatch.getColumn(col2) == t.getColumn(col1)){
+							matchFound = true;
+							break; 
+						}
+					}
+					
+					//if not: then add it	
+					if(matchFound == false){
+						SymbolicTuple newTuple = SymbolicTuple.constructTupleWithNewVariables(otherRel.relationSchema());
+						newTuple.setColumn(col2, t.getColumn(col1));
+						addTuple(otherRel, newTuple); 
+					}
+				}
+			}
+		}
+		
+	}
+	
+	public void ensureFKsSatisfied(){
+		for(SymbolicRelation rel : relations){
+			for(SymbolicTuple t: rel.getTuples()){
+				ensureFKsSatisfied(t, rel); 
+			}
+			
+		}
+		
+	}
+	
+	private void ensureFKsSatisfied(SymbolicTuple t, SymbolicRelation rel){
+		//add tuples into the dependent tables too
+		for(SimpleForeignKey k : schema.getForeignKeys()){
+			if(k.col1().relationSchema() == rel.relationSchema()){
+				SymbolicRelation otherRel = schema2Rel.get(k.col2().relationSchema());
+				String col1 = k.col1().columnName(); 
+				String col2 = k.col2().columnName(); 
+				
+				boolean matchFound = false; 
+				
+				//check if it already has a matching tuple there 
+				for(SymbolicTuple potentialMatch : otherRel.getTuples()){
+					if(potentialMatch.getColumn(col2) == t.getColumn(col1)){
+						matchFound = true;
+						break; 
+					}
+				}
+				
+				//if not: then add it	
+				if(matchFound == false){
+					SymbolicTuple newTuple = SymbolicTuple.constructTupleWithNewVariables(otherRel.relationSchema());
+					newTuple.setColumn(col2, t.getColumn(col1));
+					addTuple(otherRel, newTuple); 
+				}
+			}
+		}
+	
+	}
+	
+	public void replaceVariableV1WithV2(Variable v1, Variable v2){
+		for(SymbolicRelation rel: relations){
+			for(SymbolicTuple t: rel.getTuples()){
+				t.replaceV1WithV2(v1, v2); 
+			}
+		}
+		
+		
+	}
+	
+	public List<SymbolicTuple> allTuplesThatMergeWith(SymbolicTuple tuple){
+		List<SymbolicTuple> candidates = new ArrayList<SymbolicTuple>();
+		SymbolicRelation rel = this.getRelation(tuple.underlyingSchema.getRelationName());
+		for(SymbolicTuple t : rel.getTuples()){
+			//im more certain now that this should indeed be dontcheckcolumnschemas (not 100% though) 
+			if(t.canBeMergedDontCheckColumnSchemas(tuple)){
+				candidates.add(t); 
+			}
+		}
+		return candidates; 
+	}
+	
+	public void applyConfiguration(Configuration configuration){
+		for(int i=0; i < configuration.size(); i++){
+			AddAction addAction = configuration.get(i);
+			
+			if(addAction.isAMerge() == false){//we're not merging this tuple
+				addTuple(addAction.t, false); //dont add FK dependencies
+			}else{
+				mergeAdd(addAction.t, addAction.mergeCandidate); 
+				
+				//we need to do the variable replacement! dont we? 
+				for(int a=0; a<addAction.t.arity(); a++){
+					configuration.replaceV1WithV2(addAction.t.getColumn(a), addAction.mergeCandidate.getColumn(a)); 
+				} 
+			}
+		}
+		
+		ensureFKsSatisfied(); 
+	}
+	
+	public boolean canBeApplied(Configuration configuration){
+		Pair<SymbolicDB, Hashtable<Variable, Variable>> cloneAndMapping = this.cloneAndReturnMapping();
+		SymbolicDB dbClone = cloneAndMapping.x();
+		Hashtable<Variable, Variable> varMapping = cloneAndMapping.y(); 
+		Configuration configClone = configuration.cloneWithMapping(varMapping); 
+		
+		dbClone.applyConfiguration(configClone); 
+		
+		return dbClone.allVariablesSatisfiable() && dbClone.arePKsSatisfied(); 
+	}
+	
+	public boolean allVariablesSatisfiable(){
+		for(SymbolicRelation rel : relations){
+			for(SymbolicTuple t : rel.getTuples()){
+				for(Variable v : t.variables()){
+					if(v.satisfiable() == false){
+						return false; 
+					}
+				}
+			}
+		}
+		
+		return true; 
+	}
+	
+	public boolean arePKsSatisfied(){
+		for(SymbolicRelation rel : relations){
+			for(int i=0; i<rel.arity(); i++){
+				if(rel.relationSchema().getAttribute(i).isKey()){//this is a key. check for repeats
+					HashSet<Variable> varsSeen = new HashSet<Variable>();
+					for(SymbolicTuple t : rel.getTuples()){
+						if(varsSeen.contains(t.getColumn(i))){
+							return false;
+						}else{
+							varsSeen.add(t.getColumn(i)); 
+						}
+						
+					}
+				}
+			}
+		}
+		
+		
+		return true; 
+	}
+	
+
 	
 	
 	

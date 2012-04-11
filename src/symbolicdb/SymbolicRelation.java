@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 
-import old.SimpleView;
 
 import schema.ColumnSchema;
 import schema.RelationSchema;
@@ -29,14 +28,11 @@ public class SymbolicRelation {
 		this.relationSchema = relationSchema;  
 	}
 	
-	public void addTuple(SymbolicTuple tuple){
+	protected void addTuple(SymbolicTuple tuple){
 		getTuples().add(tuple); 	
 		
 	}
 	
-	public void removeTuple(SymbolicTuple tuple){
-		tuples.remove(tuple); 
-	}
 	
 	protected SymbolicRelation cloneAccordingToMap(Hashtable<Variable, Variable> varToNewVar){
 		SymbolicRelation clone = new SymbolicRelation(this.relationSchema); 
@@ -61,10 +57,6 @@ public class SymbolicRelation {
 		
 	}
 	
-	///TODO: should be moved into RelationSchema class. 
-	
-	
-	
 	public static SymbolicRelation cartesianProduct(SymbolicRelation x, SymbolicRelation y){
 		RelationSchema newSchema = RelationSchema.cartesianProduct(x.relationSchema, y.relationSchema); 
 		SymbolicRelation xy = new SymbolicRelation(newSchema);
@@ -86,46 +78,6 @@ public class SymbolicRelation {
 		return xy;
 	}
 	
-	/**
-	 * Returns new relation with all tuples that could possibly pass the filter. 
-	 * Add constraint to the passing tuples. 
-	 * 
-	 * @param x
-	 * @param c
-	 * @param name
-	 * @return
-	 */
-	public static SymbolicRelation filterWithUnaryConstraint(SimpleView view, SymbolicRelation x, UnaryConstraint c){
-		SymbolicRelation r = new SymbolicRelation(x.relationSchema); 
-		for(SymbolicTuple t : x.getTuples()){
-			Variable v = t.getColumn(c.getColumnName(), view); 
-			if(v.satisfiableWith(c.getConstraint())){
-				v.addConstraint(c.getConstraint()); 
-				r.addTuple(t); 
-			}
-		}
-		return r; 
-	}
-	
-	public static SymbolicRelation filterWithBinaryConstraint(SimpleView view, SymbolicRelation x, BinaryConstraint c){
-		SymbolicRelation r = new SymbolicRelation(x.relationSchema); 
-		for(SymbolicTuple t : x.getTuples()){
-			Variable v1 = t.getColumn(c.getCol1(), view);
-			Variable v2 = t.getColumn(c.getCol2(), view);
-			
-			if(v1.canBeMerged(v2)){
-				v1.merge(v2);
-				view.replaceV1WithV2RecursivelyUp(v2, v1); 
-				
-				t.setColumn(c.getCol2(), v1, view); 
-				r.addTuple(t); 
-			}
-		}
-		return r; 
-		
-		
-	}
-	
 	public static SymbolicRelation copyRelationWithSameVariables(SymbolicRelation x){
 		SymbolicRelation r = new SymbolicRelation(x.relationSchema);
 		for(SymbolicTuple t : x.getTuples()){
@@ -138,40 +90,7 @@ public class SymbolicRelation {
 		return r; 
 	}
 	
-	public static SymbolicRelation groupByAndCount(SimpleView view, SymbolicRelation x, String column){
-		RelationSchema schema = new RelationSchema(x.relationSchema.getRelationName() + "_groupby"); 
-		schema.addAttribute(column);
-		schema.addAttribute("countStar"); 
-		
-		SymbolicRelation r = new SymbolicRelation(schema);
-		
-		Hashtable<Variable, Integer> varToCount = new Hashtable<Variable, Integer>(); 
-		
-		for(SymbolicTuple t : x.getTuples()){
-			Variable v = t.getColumn(column, view); 
-			if(varToCount.containsKey(v) == false){
-				varToCount.put(v, 0);
-			}
-			
-			varToCount.put(v, varToCount.get(v) + 1); 
-		}
-		
-		for(Variable v : varToCount.keySet()){
-			SymbolicTuple t = new SymbolicTuple(x.relationSchema);
-			t.setColumn(0, v);
-			
-			int count = varToCount.get(v); 
-			Variable countVar = new Variable(schema.getAttribute(1));
-			countVar.addConstraint(new NumericConstraint(new ComparisonOp.EQUALS(), count)); 
-			t.setColumn(1, countVar); 
-			
-			r.addTuple(t); 
-		}
-		
-		return r; 
-		
-		
-	}
+
 	
 	public String toString(){
 		StringBuilder s = new StringBuilder();  
@@ -206,11 +125,6 @@ public class SymbolicRelation {
 		for(SymbolicTuple t : getTuples()){
 			t.replaceV1WithV2(v1, v2); 
 		}
-	}
-
-	
-	public void setTuples(List<SymbolicTuple> tuples) {
-		this.tuples = tuples;
 	}
 
 	public List<SymbolicTuple> getTuples() {

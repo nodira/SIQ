@@ -16,13 +16,14 @@ public class GroupbyCountOperator extends QueryOperator.UnaryQueryOperator{
 
 	List<Integer> groupbyColumns; 
 	
-	public GroupbyCountOperator(QueryOperator underlyingOperator, int... groupbyColumns){
+	public GroupbyCountOperator(QueryOperator underlyingOperator, QueryPlan queryPlan, int... groupbyColumns){
 		List<Integer> groupbyColsList = new ArrayList<Integer>(); 
 		for(Integer groupbyColumn : groupbyColumns){
 			groupbyColsList.add(groupbyColumn); 
 		}
 		this.underlyingOperator = underlyingOperator; 
 		this.groupbyColumns = groupbyColsList; 
+		this.queryPlan = queryPlan; 
 		constructSchema(); 
 	}
 	
@@ -45,11 +46,14 @@ public class GroupbyCountOperator extends QueryOperator.UnaryQueryOperator{
 	@Override
 	public void update(boolean print) {
 		underlyingOperator.update(print); 
-		this.setIntermediateResults(new ArrayList<SymbolicTuple>());
+		this.setIntermediateResults(applyOperator(underlyingOperator.getIntermediateResults()));	
+	}
+	
+	public List<SymbolicTuple> applyOperator(List<SymbolicTuple> tuples){
+		List<SymbolicTuple> result = new ArrayList<SymbolicTuple>(); 
 		
 		Hashtable<String, Integer> groupToCount = new Hashtable<String, Integer>(); 
-		for(SymbolicTuple t : underlyingOperator.getIntermediateResults()){
-			
+		for(SymbolicTuple t : tuples){
 			//construct group string
 			StringBuilder sb = new StringBuilder();
 			for(Integer groupbyColumn : groupbyColumns){
@@ -66,7 +70,7 @@ public class GroupbyCountOperator extends QueryOperator.UnaryQueryOperator{
 				for(int i=0; i<groupbyColumns.size(); i++){
 					groupCount.setColumn(i, t.getColumn(groupbyColumns.get(i))); 
 				}
-				this.getIntermediateResults().add(groupCount); 
+				result.add(groupCount); 
 			}
 			
 			//now it is definitely in hashtable. so increase the count 
@@ -75,7 +79,7 @@ public class GroupbyCountOperator extends QueryOperator.UnaryQueryOperator{
 		}
 	
 		//iterate through intermediate results and fill in the count column from the hashtable
-		for(SymbolicTuple t : getIntermediateResults()){
+		for(SymbolicTuple t : result){
 			//construct group string
 			StringBuilder sb = new StringBuilder();
 			for(int i=0; i<t.arity()-1; i++){
@@ -90,39 +94,75 @@ public class GroupbyCountOperator extends QueryOperator.UnaryQueryOperator{
 			t.setColumn(currentSchema.size()-1, countVar); 
 		}
 		
-		
+		return result; 
 	}
 
-	@Override
-	public void request(SymbolicTuple tuple, boolean mustBeNewTuple, boolean print) {
-		if(print){
-			printDebugInfo(tuple, "request"); 
-		}
+	private SymbolicTuple[] ungrouped(SymbolicTuple... tuples){
+		List<SymbolicTuple[]> ungroups = new ArrayList<SymbolicTuple[]>();
+		int totalCount = 0;
 		
-		int count = (int) (tuple.getColumn(currentSchema.size()-1).getDoubleValue()); 
-		
-		for(int tupleCount = 0; tupleCount < count; tupleCount++){
-			SymbolicTuple unprojectedT = new SymbolicTuple(underlyingOperator.currentSchema); 
-			for(int i=0; i<groupbyColumns.size(); i++){
-				unprojectedT.setColumn(groupbyColumns.get(i), tuple.getColumn(i)); 
-			}
-			//fill the nulls with new variables
-			for(int i=0; i<unprojectedT.arity(); i++){
-				if(unprojectedT.getColumn(i) == null){
-					Variable v = new Variable(unprojectedT.underlyingSchema().getAttribute(i)); 
-					unprojectedT.setColumn(i, v); 
+		for(SymbolicTuple tuple : tuples){
+			int count = (int) (tuple.getColumn(currentSchema.size()-1).getDoubleValue()); 
+			SymbolicTuple[] requests = new SymbolicTuple[count];
+			
+			
+			for(int tupleCount = 0; tupleCount < count; tupleCount++){
+				SymbolicTuple unprojectedT = new SymbolicTuple(underlyingOperator.currentSchema); 
+				for(int i=0; i<groupbyColumns.size(); i++){
+					unprojectedT.setColumn(groupbyColumns.get(i), tuple.getColumn(i)); 
 				}
+				//fill the nulls with new variables
+				for(int i=0; i<unprojectedT.arity(); i++){
+					if(unprojectedT.getColumn(i) == null){
+						Variable v = new Variable(unprojectedT.underlyingSchema().getAttribute(i)); 
+						unprojectedT.setColumn(i, v); 
+					}
+				}
+				
+				requests[tupleCount] = unprojectedT; 
 			}
-			underlyingOperator.request(unprojectedT, mustBeNewTuple, print); 
+			
+			totalCount += count;
+			ungroups.add(requests); 
 		}
 		
+		SymbolicTuple[] allRequests = new SymbolicTuple[totalCount];
+		int i=0; 
+		for(SymbolicTuple[] requests : ungroups){
+			for(SymbolicTuple request : requests){
+				allRequests[i++] = request; 
+			}
+		}
+		
+		return allRequests; 
+		
 	}
-
+	
+	
 	@Override
 	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
 		localVariableRenaming(v1, v2);
-		underlyingOperator.replaceVariableV1WithV2(v1, v2); 
+		underlyingOperator.replaceVariableV1WithV2(v1, v2); 	
+	}
+	
+	public String groupByColsString(){
+		StringBuilder sb = new StringBuilder(); 
 		
+		for(Integer groupbyCol : groupbyColumns){
+			sb.append(currentSchema.getAttribute(groupbyCol) + ", ");  
+		}
+		 
+		if(sb.length() > 0){
+			sb.delete(sb.length() - 2, sb.length()); 
+		}
+		
+		return sb.toString(); 
+	}
+
+	@Override
+	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
+		SymbolicTuple[] requests = ungrouped(tuples); 
+		return underlyingOperator.translateToAtomicAdds(requests); 
 	}
 
 }

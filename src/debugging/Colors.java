@@ -124,8 +124,8 @@ public class Colors {
 		"#EDEDED",
 		"#DBD7D2",
 		"#CDC5C2",
-		"#95918C",
-		"#232323"
+		"#95918C"//,
+		//"#232323"
 	}; 
 	
 	public static String nextColor(){
