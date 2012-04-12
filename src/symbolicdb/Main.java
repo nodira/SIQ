@@ -15,7 +15,7 @@ import symbolicdbmergers.TupleByTupleMerger;
 public class Main {
 
     public static void main(String[] args) throws Exception{
-		QuerySession qs1 = ExampleQuerySessions.getQS1(); 
+		QuerySession qs1 = ExampleQuerySessions.getQS2(); 
 		QueryPlan qp1 = QueryPlan.constructQueryPlan(qs1); 
 		QueryPlanIllustrator illustrator1 = new QueryPlanIllustrator();  
 		illustrator1.illustrate(qp1); 
@@ -33,7 +33,7 @@ public class Main {
 		System.out.println("$$$$$$$$$$$$$$$$$$$$$$"); 
 		 
 		
-		GraphvizPrinter p1 = new GraphvizPrinter("/Users/nodira/Desktop/qp1.dot");
+		/*GraphvizPrinter p1 = new GraphvizPrinter("/Users/nodira/Desktop/qp1.dot");
 		p1.printDot(qp1);
 		
 		GraphvizPrinter p2 = new GraphvizPrinter("/Users/nodira/Desktop/qp2.dot");
@@ -44,9 +44,15 @@ public class Main {
 		
 		GraphvizPrinter pUnion = new GraphvizPrinter("/Users/nodira/Desktop/union.dot"); 
 		pUnion.printDot(unionMergedDB); 
+		*/
 		
-		SymbolicToRealSample strs = new SymbolicToRealSample(wellMergedDB, "imdb-conn.properties"); 
-		//strs.printSample(); 
+		
+		GraphvizPrinter p1 = new GraphvizPrinter("/Users/nodira/Desktop/qp1.dot");
+		p1.printDot(qp1);
+		SymbolicToRealSample strs = new SymbolicToRealSample(qp1.db(), "imdb-conn.properties"); 
+		Assignment asg = strs.printSampleAndReturnAssignment(); 
+		GraphvizPrinter pBER = new GraphvizPrinter("/Users/nodira/Desktop/real-sample.dot"); 
+		pBER.printDot(qp1, asg); 
 		
 	}
 	

@@ -15,7 +15,7 @@ public final class IMDBSchemaWithKeys {
         movie.addKeyAttribute("id");
         movie.addAttribute("name");
         movie.addAttribute("year");
-        movie.addAttribute("rank");
+        //movie.addAttribute("rank");
         schema.add(movie);
 
         RelationSchema directors = new RelationSchema("directors");

@@ -15,13 +15,14 @@ import java.util.Properties;
 
 import constraints.VariableConstraint;
 
+import symbolicdb.Assignment;
 import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicRelation;
 import symbolicdb.SymbolicTuple;
 import symbolicdb.Variable;
 
 public class SymbolicToRealSample {
-	static final int NUM_INSTANCES_DESIRED = 10; 
+	static final int NUM_INSTANCES_DESIRED = 1; 
 	
 	SymbolicDB symbolicDB;
 	String propertiesFile;  
@@ -48,12 +49,15 @@ public class SymbolicToRealSample {
 		
 	}
 	
-	public String printSample(){
+	public Assignment printSampleAndReturnAssignment(){
 		List<Variable> 		allVariables = new ArrayList<Variable>(); 
 		List<SymbolicTuple> allTuples 	 = new ArrayList<SymbolicTuple>(); 
 		Hashtable<SymbolicTuple, String>     symbolicTuple2Alias   = new Hashtable<SymbolicTuple, String>(); 
 		Hashtable<Variable, List<String>> 	 variable2AliasDotCols = new Hashtable<Variable, List<String>>(); 
 		
+		Hashtable<Integer, Variable> columnIndex2Var = new Hashtable<Integer, Variable>(); 
+		
+		//collect all tuples
 		for(SymbolicRelation rel: symbolicDB.relations()){
 			for(SymbolicTuple tuple : rel.getTuples()){
 				allTuples.add(tuple); 
@@ -62,11 +66,15 @@ public class SymbolicToRealSample {
 		
 		StringBuilder fromClause = new StringBuilder("FROM ");
 		List<String> wherePredicates = new ArrayList<String>(); 
+		List<String> aliases = new ArrayList<String>(); 
 		
+		int columnsAdded = 1;
 		for(int i=0; i<allTuples.size(); i++){
 			SymbolicTuple t = allTuples.get(i); 
 			String tableName = t.underlyingSchema().getRelationName(); 
 			String alias 	 = "" + tableName.charAt(0) + i; 
+			
+			aliases.add(alias); 
 			
 			fromClause.append(tableName + " " + alias); 
 			if(i < allTuples.size() -1){//not the last tuple
@@ -79,12 +87,12 @@ public class SymbolicToRealSample {
 			//iterate thru each column of symbolic tuple, and collect variable occurence info
 			for(int j=0; j<t.arity(); j++){
 				Variable v = t.getColumn(j); 
+				columnIndex2Var.put(columnsAdded, v); 
 				if(allVariables.contains(v) == false){
 					allVariables.add(v); 
 				}
-				
 				String aliasDotCol = alias + "." + t.underlyingSchema().getAttribute(j) ;
-				
+				columnsAdded++;
 				if(variable2AliasDotCols.containsKey(v) == false){
 					variable2AliasDotCols.put(v, new ArrayList<String>()); 
 				}
@@ -99,8 +107,6 @@ public class SymbolicToRealSample {
 			}
 		}
 		
-		
-		
 		//now need to add all the constraints as predicates
 		for(Variable v : allVariables){
 			List<String> occurences = variable2AliasDotCols.get(v);
@@ -110,7 +116,6 @@ public class SymbolicToRealSample {
 				}
 			}
 		}
-		
 		
 		//construct where clause from list of predicates
 		StringBuilder whereClause = new StringBuilder(); 
@@ -126,6 +131,21 @@ public class SymbolicToRealSample {
 			}
 		}
 		
+		//need to add predicates to say tuples can not be picked twice
+		for(int i=0; i<aliases.size(); i++){
+			String alias1 = aliases.get(i); 
+			for(int j=i+1; j<aliases.size(); j++){
+				String alias2 = aliases.get(j); 
+				if(alias1.charAt(0) == alias2.charAt(0)){//potentially same table
+					if(whereClause.length() == 0){
+						whereClause.append(alias1 + ".oid <> " + alias2 + ".oid");
+					}else{
+						whereClause.append(" AND " + alias1 + ".oid <> " + alias2 + ".oid");
+					}
+				}
+			}
+		}
+		
 		
 		//String query = "use imdb; select top " + NUM_INSTANCES_DESIRED + "  * \n" + fromClause.toString() + whereClause.toString(); 
 		String query = "select * \n" + fromClause.toString() + whereClause.toString() + "\n LIMIT " + NUM_INSTANCES_DESIRED; 
@@ -133,11 +153,11 @@ public class SymbolicToRealSample {
 		System.out.println(query); 
 		Connection connToDB = createConn(); 
 		
-		    
+		Assignment asg = null;   
 		try{
 			Statement stmt = connToDB.createStatement();
 			ResultSet rs = stmt.executeQuery(query); 
-			printResultSetAndClose(rs);
+			asg = printResultSetAndClose(rs, columnIndex2Var);
 			rs.close(); 
 			stmt.close();
 			connToDB.close(); 
@@ -147,7 +167,7 @@ public class SymbolicToRealSample {
 			System.exit(-1); 
 		}
 		
-		return ""; 
+		return asg; 
 		
 		
 		
@@ -158,14 +178,16 @@ public class SymbolicToRealSample {
 	}
 
 	
-	public static void printResultSetAndClose(ResultSet rs) throws Exception{
+	public static Assignment printResultSetAndClose(ResultSet rs, Hashtable<Integer, Variable> columnIndex2Var) throws Exception{
 		ResultSetMetaData rsmd = rs.getMetaData();
-
+		Assignment asg = new Assignment(); 
+		
 		//printColTypes(rsmd);
 		System.out.println("");
 
 		int numberOfColumns = rsmd.getColumnCount();
 
+		
 		for (int i = 1; i <= numberOfColumns; i++) {
 			if (i > 1) System.out.print(",  ");
 			String columnName = rsmd.getColumnName(i);
@@ -178,9 +200,16 @@ public class SymbolicToRealSample {
 				if (i > 1) System.out.print(",  ");
 				String columnValue = rs.getString(i);
 				System.out.print(columnValue);
+				
+
+				if(columnIndex2Var.containsKey(i)){//coz the other one is 
+					asg.assign(columnIndex2Var.get(i), columnValue); 
+				}
 			}
 			System.out.println("");  
 		}
+		
+		return asg; 
 	}
       
 	
