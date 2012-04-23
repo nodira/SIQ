@@ -32,6 +32,10 @@ public class ColumnSchema {
 		return columnName; 
 	}
 	
+	public String relDotCol(){
+		return relationSchema.getRelationName() + "." + columnName; 
+	}
+	
 	public String toLongString(){
 		return relationSchema.getRelationName() + "." + columnName + (isKey?"[key]":""); 
 	}

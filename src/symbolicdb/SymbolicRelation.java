@@ -7,6 +7,7 @@ import java.util.Hashtable;
 import java.util.List;
 
 
+import realdb.GeneralRelation;
 import schema.ColumnSchema;
 import schema.RelationSchema;
 
@@ -17,10 +18,10 @@ import constraints.UnaryConstraint;
 import constraints.VariableConstraint;
 
 
-public class SymbolicRelation {
+public class SymbolicRelation implements GeneralRelation {
 	
 	private RelationSchema relationSchema; 
-	private List<SymbolicTuple> tuples = new ArrayList<SymbolicTuple>();
+	private List<Tuple> tuples = new ArrayList<Tuple>();
 	
 	
 	
@@ -28,7 +29,7 @@ public class SymbolicRelation {
 		this.relationSchema = relationSchema;  
 	}
 	
-	protected void addTuple(SymbolicTuple tuple){
+	public void addTuple(Tuple tuple){
 		getTuples().add(tuple); 	
 		
 	}
@@ -37,8 +38,8 @@ public class SymbolicRelation {
 	protected SymbolicRelation cloneAccordingToMap(Hashtable<Variable, Variable> varToNewVar){
 		SymbolicRelation clone = new SymbolicRelation(this.relationSchema); 
 		
-		for(SymbolicTuple t : tuples){
-			clone.addTuple(t.cloneAccordingToMap(varToNewVar)); 
+		for(Tuple t : tuples){
+			clone.addTuple(((SymbolicTuple)t).cloneAccordingToMap(varToNewVar)); 
 		}
 		
 		return clone; 
@@ -46,7 +47,7 @@ public class SymbolicRelation {
 	
 	public static SymbolicRelation copy(SymbolicRelation x){
 		SymbolicRelation copy = new SymbolicRelation(x.relationSchema); 
-		for(SymbolicTuple tx : x.getTuples()){
+		for(Tuple tx : x.getTuples()){
 			SymbolicTuple t = new SymbolicTuple(x.relationSchema);
 			for(int i=0; i<x.relationSchema.size(); i++){
 				t.setColumn(i, tx.getColumn(i)); 
@@ -61,8 +62,8 @@ public class SymbolicRelation {
 		RelationSchema newSchema = RelationSchema.cartesianProduct(x.relationSchema, y.relationSchema); 
 		SymbolicRelation xy = new SymbolicRelation(newSchema);
 		
-		for(SymbolicTuple tx : x.getTuples()){
-			for(SymbolicTuple ty : y.getTuples()){
+		for(Tuple tx : x.getTuples()){
+			for(Tuple ty : y.getTuples()){
 				SymbolicTuple t = new SymbolicTuple(newSchema);
 				for(int i=0; i<xy.relationSchema.size(); i++){
 					if(i < x.relationSchema.size()){
@@ -80,7 +81,7 @@ public class SymbolicRelation {
 	
 	public static SymbolicRelation copyRelationWithSameVariables(SymbolicRelation x){
 		SymbolicRelation r = new SymbolicRelation(x.relationSchema);
-		for(SymbolicTuple t : x.getTuples()){
+		for(Tuple t : x.getTuples()){
 			SymbolicTuple tt = new SymbolicTuple(x.relationSchema);
 			for(int i=0; i < r.relationSchema.size(); i++){
 				tt.setColumn(i, t.getColumn(i)); 
@@ -101,14 +102,14 @@ public class SymbolicRelation {
 		s.append("\n"); 
 		
 		
-		for(SymbolicTuple t : getTuples()){
+		for(Tuple t : getTuples()){
 			s.append(t.toString() + "\n"); 
 		}
 		s.append("\n Constraints: \n"); 
 		HashSet<Variable> printedVars = new HashSet<Variable>();
-		for(SymbolicTuple t : getTuples()){
+		for(Tuple t : getTuples()){
 			for(int i=0; i<this.relationSchema.size(); i++){
-				Variable v = t.getColumn(i);
+				Variable v = ((SymbolicTuple)t).getColumn(i);
 				if(printedVars.contains(v) == false){
 					if(v.getConstraints().size() > 0){
 						s.append(v.toStringWithConstraint() + "\n"); 
@@ -122,12 +123,12 @@ public class SymbolicRelation {
 	}
 	
 	public void replaceV1WithV2(Variable v1, Variable v2){
-		for(SymbolicTuple t : getTuples()){
-			t.replaceV1WithV2(v1, v2); 
+		for(Tuple t : getTuples()){
+			((SymbolicTuple)t).replaceV1WithV2(v1, v2); 
 		}
 	}
 
-	public List<SymbolicTuple> getTuples() {
+	public List<Tuple> getTuples() {
 		return tuples;
 	}
 	
@@ -138,9 +139,5 @@ public class SymbolicRelation {
 	public RelationSchema relationSchema(){
 		return relationSchema; 
 	}
-	
-	
-	
-	
 	
 }

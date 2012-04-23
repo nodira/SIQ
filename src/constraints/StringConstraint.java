@@ -19,6 +19,17 @@ public class StringConstraint implements VariableConstraint{
 		return op + " " + value; 
 	}
 	
+	public boolean doesValueSatisfy(String s){
+		if(op instanceof ComparisonOp.EQUALS){
+			return s.equals(value);
+		}else if(op instanceof ComparisonOp.NOT_EQUALS){
+			return (s.equals(value) == false);
+		}else{
+			throw new RuntimeException("StringConstraint.op must be = or !=. Not " + op); 
+		}
+		
+		
+	}
 	
 	///need to test this. 
 	public boolean isSatisfiableWith(VariableConstraint constraint){

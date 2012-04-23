@@ -1,8 +1,10 @@
 package symbolicdbmergers;
 
+import realdb.GeneralRelation;
 import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicRelation;
 import symbolicdb.SymbolicTuple;
+import symbolicdb.Tuple;
 
 public class TupleByTupleMerger {
 
@@ -26,20 +28,23 @@ public class TupleByTupleMerger {
 		
 		SymbolicDB mergeDB  = new SymbolicDB(db1.schema()); 
 		
-		for(SymbolicRelation rel1 : db1Clone.relations()){
-			SymbolicRelation mergeRel = mergeDB.getRelation(rel1.relationSchema().getRelationName()); 
+		for(GeneralRelation rrel1 : db1Clone.relations()){
+			SymbolicRelation rel1 = (SymbolicRelation) rrel1; 
+			SymbolicRelation mergeRel = (SymbolicRelation) mergeDB.getRelation(rel1.relationSchema().getRelationName()); 
 			
 			//add every tuple from db1Clone
-			SymbolicRelation rel2 = db2Clone.getRelation(rel1.relationSchema().getRelationName());
-			for(SymbolicTuple t1 : rel1.getTuples()){
+			SymbolicRelation rel2 = (SymbolicRelation) db2Clone.getRelation(rel1.relationSchema().getRelationName());
+			for(Tuple t1 : rel1.getTuples()){
 				mergeDB.addTuple(mergeRel, t1, false); 
 			}
 			
 			//add every tuple from db2Clone unless it can be merged with some existing tuple
-			for(SymbolicTuple t2: rel2.getTuples()){
+			for(Tuple tt2: rel2.getTuples()){
+				SymbolicTuple t2 = (SymbolicTuple)tt2; 
 				boolean mergedIntoTupleFromT1 = false; 
 				if(simplyUnion == false){
-					for(SymbolicTuple t1 : rel1.getTuples()){
+					for(Tuple tt1 : rel1.getTuples()){
+						SymbolicTuple t1 = (SymbolicTuple) tt1;  
 						if(t1.canBeMerged(t2)){
 							t1.merge(t2);
 							

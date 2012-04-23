@@ -43,6 +43,17 @@ public class NumericConstraint implements VariableConstraint{
 		return ranges; 
 	}
 	
+	public boolean doesValueSatisfy(double d){
+		List<Range> ranges = toRanges(); 
+		for(Range range : ranges){
+			if(range.contains(d)){
+				return true; 
+			}
+		}
+		return false; 
+		
+	}
+	
 	///need to test this. 
 	public boolean isSatisfiableWith(VariableConstraint constraint){
 		if(constraint instanceof StringConstraint){

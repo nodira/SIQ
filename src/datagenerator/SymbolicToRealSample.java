@@ -15,10 +15,13 @@ import java.util.Properties;
 
 import constraints.VariableConstraint;
 
+import realdb.GeneralRelation;
+import realdb.RealValue;
 import symbolicdb.Assignment;
 import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicRelation;
 import symbolicdb.SymbolicTuple;
+import symbolicdb.Tuple;
 import symbolicdb.Variable;
 
 public class SymbolicToRealSample {
@@ -32,7 +35,7 @@ public class SymbolicToRealSample {
 		this.propertiesFile = propertiesFile; 
 	}
 	
-	private Connection createConn(){
+	public static Connection createConn(String propertiesFile){
 		try{
 			Properties imdbProps = new Properties();
 			imdbProps.load(new FileInputStream(propertiesFile));
@@ -58,9 +61,9 @@ public class SymbolicToRealSample {
 		Hashtable<Integer, Variable> columnIndex2Var = new Hashtable<Integer, Variable>(); 
 		
 		//collect all tuples
-		for(SymbolicRelation rel: symbolicDB.relations()){
-			for(SymbolicTuple tuple : rel.getTuples()){
-				allTuples.add(tuple); 
+		for(GeneralRelation rel: symbolicDB.relations()){
+			for(Tuple tuple : rel.getTuples()){
+				allTuples.add((SymbolicTuple)tuple); 
 			}
 		}
 		
@@ -151,7 +154,7 @@ public class SymbolicToRealSample {
 		String query = "select * \n" + fromClause.toString() + whereClause.toString() + "\n LIMIT " + NUM_INSTANCES_DESIRED; 
 		
 		System.out.println(query); 
-		Connection connToDB = createConn(); 
+		Connection connToDB = createConn(propertiesFile); 
 		
 		Assignment asg = null;   
 		try{
@@ -203,7 +206,8 @@ public class SymbolicToRealSample {
 				
 
 				if(columnIndex2Var.containsKey(i)){//coz the other one is 
-					asg.assign(columnIndex2Var.get(i), columnValue); 
+					//TODO: choose DoubleValue if it is indeed. 
+					asg.assign(columnIndex2Var.get(i), new RealValue.StringValue(columnValue)); 
 				}
 			}
 			System.out.println("");  

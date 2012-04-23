@@ -36,15 +36,15 @@ public final class IMDBSchemaWithKeys {
         schema.add(movie_directors);
 
         RelationSchema genre = new RelationSchema("genre");
-        genre.addAttribute("genre");
         genre.addAttribute("mid");
+        genre.addAttribute("genre");
         schema.add(genre);
 
-        RelationSchema director_genre = new RelationSchema("director_genre");
-        director_genre.addAttribute("did");
-        director_genre.addAttribute("genre");
-        director_genre.addAttribute("prob");
-        schema.add(director_genre);
+//        RelationSchema director_genre = new RelationSchema("director_genre");
+//        director_genre.addAttribute("did");
+//        director_genre.addAttribute("genre");
+//        director_genre.addAttribute("prob");
+//        schema.add(director_genre);
         
         schema.addForeignKey(casts.getAttribute("pid"), actor.getAttribute("id")); 
         schema.addForeignKey(casts.getAttribute("mid"), movie.getAttribute("id"));

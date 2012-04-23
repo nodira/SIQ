@@ -4,21 +4,24 @@ import java.util.HashSet;
 import java.util.List;
 
 
+import realdb.GeneralDB;
+import realdb.GeneralRelation;
 import schema.ColumnSchema;
 import schema.RelationSchema;
 import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicRelation;
 import symbolicdb.SymbolicTuple;
+import symbolicdb.Tuple;
 import symbolicdb.Variable;
 
 
 public class TableOperator extends QueryOperator{
 	
-	private SymbolicDB underlyingDB; 
-	private SymbolicRelation underlyingRelation; 
+	private GeneralDB underlyingDB; 
+	private GeneralRelation underlyingRelation; 
 	
 	
-	public TableOperator(SymbolicDB underlyingDB, String relationName, QueryPlan queryPlan){
+	public TableOperator(GeneralDB underlyingDB, String relationName, QueryPlan queryPlan){
 		this.underlyingDB = underlyingDB; 
 		this.underlyingRelation = underlyingDB.getRelation(relationName);
 		this.queryPlan = queryPlan;
@@ -30,56 +33,45 @@ public class TableOperator extends QueryOperator{
 		
 		System.out.println("TableOperator: " + currentSchema); 
 	}
+
+	@Override
+	public void update(boolean print) {
+		this.setIntermediateResults(new ArrayList<Tuple>());
+		for(Tuple t : getUnderlyingRelation().getTuples()){
+			Tuple tRenamed = t.reconstructForNewSchema(currentSchema); 
+			this.getIntermediateResults().add(tRenamed);  
+		}	
+	}
+	
+	@Override
+	public List<Tuple> resultOf(List<Tuple> tuples) {
+		List<Tuple> tuplesForThisTable = new ArrayList<Tuple>();
+		for(Tuple tuple : tuples){
+			if(tuple.underlyingSchema() == underlyingRelation.relationSchema()){
+				tuplesForThisTable.add(tuple.reconstructForNewSchema(currentSchema));
+			}
+		}
+		return tuplesForThisTable; 
+	}
+	
+	public GeneralRelation getUnderlyingRelation() {
+		return underlyingRelation;
+	}
+
+	//-------------- specific to SymbolicDB ----------------
 	
 	@Override
 	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
 		localVariableRenaming(v1, v2); 
-		underlyingDB.replaceVariableV1WithV2(v1, v2); 
-	}
-
-	@Override
-	public void update(boolean print) {
-		this.setIntermediateResults(new ArrayList<SymbolicTuple>());
-		for(SymbolicTuple t : getUnderlyingRelation().getTuples()){
-			SymbolicTuple tRenamed = renameFromUnderlyingSchema(t); 
-			this.getIntermediateResults().add(tRenamed);  
-		}	
-	}
-
-	
-	private SymbolicTuple renameFromUnderlyingSchema(SymbolicTuple tuple){
-		SymbolicTuple tupleRenamed = SymbolicTuple.constructTupleWithNewVariables(currentSchema);
-		for(int i=0; i<tuple.arity(); i++){
-			tupleRenamed.setColumn(i, tuple.getColumn(i)); 
-		}
-		return tupleRenamed; 
-	}
-	
-	private SymbolicTuple renameToUnderlyingSchema(SymbolicTuple tuple){
-		SymbolicTuple tupleRenamed = SymbolicTuple.constructTupleWithNewVariables(underlyingRelation.relationSchema());
-		for(int i=0; i<tuple.arity(); i++){
-			tupleRenamed.setColumn(i, tuple.getColumn(i)); 
-		}
-		return tupleRenamed; 
-	}
-	
-	private SymbolicTuple addTupleWithRenaming(SymbolicTuple tuple){
-		SymbolicTuple tupleRenamed = renameToUnderlyingSchema(tuple); 
-		underlyingDB.addTuple(underlyingRelation, tupleRenamed);  
-		
-		return tupleRenamed; 
-	}
-	
-	public SymbolicRelation getUnderlyingRelation() {
-		return underlyingRelation;
+		((SymbolicDB)underlyingDB).replaceVariableV1WithV2(v1, v2); 
 	}
 
 	//this is BEST EFFORT. if we cant add all - add some subset. 
-	@Override
+	//@Override
 	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
 		List<SymbolicTuple> atomicAdds = new ArrayList<SymbolicTuple>();
 		for(SymbolicTuple tuple : tuples){
-			SymbolicTuple renamedTuple = renameToUnderlyingSchema(tuple);  
+			SymbolicTuple renamedTuple = (SymbolicTuple) tuple.reconstructForNewSchema(underlyingRelation.relationSchema());  
 			atomicAdds.add(renamedTuple); 
 		}
 		
@@ -104,16 +96,7 @@ public class TableOperator extends QueryOperator{
 		return atomicAdds ; 
 	}
 
-	@Override
-	public List<SymbolicTuple> resultOf(List<SymbolicTuple> tuples) {
-		List<SymbolicTuple> tuplesForThisTable = new ArrayList<SymbolicTuple>();
-		for(SymbolicTuple tuple : tuples){
-			if(tuple.underlyingSchema() == underlyingRelation.relationSchema()){
-				tuplesForThisTable.add(renameFromUnderlyingSchema(tuple));
-			}
-		}
-		return tuplesForThisTable; 
-	}
+	
 	
 	
 	

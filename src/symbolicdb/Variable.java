@@ -3,6 +3,7 @@ package symbolicdb;
 import java.util.ArrayList;
 import java.util.List;
 
+import realdb.RealValue;
 import schema.ColumnSchema;
 
 import constraints.ComparisonOp;
@@ -11,7 +12,7 @@ import constraints.StringConstraint;
 import constraints.UnaryConstraint;
 import constraints.VariableConstraint;
 
-public class Variable implements Cloneable{
+public class Variable implements Cloneable, CellValue{
 	static int numVariables = 0; 
 	enum VariableType{ numericType, stringType } 
 	
@@ -261,6 +262,15 @@ public class Variable implements Cloneable{
 	public boolean satisfiable(){
 		for(VariableConstraint c : constraints){
 			if(satisfiableWith(c) == false){
+				return false;
+			}
+		}
+		return true; 
+	}
+	
+	public boolean satisfiesConstraints(RealValue rv){
+		for(VariableConstraint c : constraints){
+			if(rv.satisfies(c) == false){
 				return false;
 			}
 		}

@@ -5,6 +5,7 @@ import java.util.List;
 import schema.ColumnSchema;
 import schema.RelationSchema;
 import symbolicdb.SymbolicTuple;
+import symbolicdb.Tuple;
 import symbolicdb.Variable;
 
 
@@ -26,13 +27,7 @@ public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 		
 		
 	}
-
-	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
-		localVariableRenaming(v1, v2); 
-		o1.replaceVariableV1WithV2(v1, v2); 
-		o2.replaceVariableV1WithV2(v1, v2); 
-	}
-
+	
 	@Override
 	public void update(boolean print) {
 		o1.update(print);
@@ -40,12 +35,12 @@ public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 		setIntermediateResults(cartesianProduct(o1.getIntermediateResults(), o2.getIntermediateResults())); 
 	}
 	
-	private List<SymbolicTuple> cartesianProduct(List<SymbolicTuple> tuples1, List<SymbolicTuple> tuples2){
-		List<SymbolicTuple> result = new ArrayList<SymbolicTuple>();
+	private List<Tuple> cartesianProduct(List<Tuple> tuples1, List<Tuple> tuples2){
+		List<Tuple> result = new ArrayList<Tuple>();
 		
-		for(SymbolicTuple tx : tuples1){
-			for(SymbolicTuple ty : tuples2){
-				SymbolicTuple t = new SymbolicTuple(currentSchema);
+		for(Tuple tx : tuples1){
+			for(Tuple ty : tuples2){
+				Tuple t = tx.constructNewTupleWithSchema(currentSchema);
 				for(int i=0; i<t.arity(); i++){
 					if(i < tx.arity()){
 						t.setColumn(i, tx.getColumn(i));
@@ -56,12 +51,43 @@ public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 				result.add(t);
 			} 
 		}
-		
 		return result; 
-		
 	}
 
+	@Override
+	public List<Tuple> resultOf(List<Tuple> tuples) {
+		List<Tuple> result1 = o1.resultOf(tuples); 
+		System.out.println(result1.get(0).underlyingSchema());
+		
+		List<Tuple> result2 = o2.resultOf(tuples); 
+		System.out.println(result2.get(0).underlyingSchema());
+		
+		return cartesianProduct(result1, result2); 
+	}
+	
+	//-------------- specific to SymbolicDB ----------------
+	
 
+	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
+		localVariableRenaming(v1, v2); 
+		o1.replaceVariableV1WithV2(v1, v2); 
+		o2.replaceVariableV1WithV2(v1, v2); 
+	}
+
+	@Override
+	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
+		List<SymbolicTuple> atomicAdds = new ArrayList<SymbolicTuple>();
+		
+		SymbolicTuple[] lefts  = leftsOrRights(true, tuples);
+		SymbolicTuple[] rights = leftsOrRights(false, tuples);
+		
+		atomicAdds.addAll(o1.translateToAtomicAdds(lefts));
+		atomicAdds.addAll(o2.translateToAtomicAdds(rights));
+		
+		return atomicAdds; 
+		
+	}
+	
 	private SymbolicTuple[] leftsOrRights(boolean getLefts, SymbolicTuple[] tuples){
 		SymbolicTuple[] sideTuples = new SymbolicTuple[tuples.length]; 
 		
@@ -89,62 +115,8 @@ public class CartesianOperator extends QueryOperator.BinaryQueryOperator {
 		
 		return sideTuples; 
 	}
+
 	
-	private SymbolicTuple[] minimizeList(SymbolicTuple[] l, boolean doClone){
-		List<SymbolicTuple> uniqTuples = new ArrayList<SymbolicTuple>();
-		for(SymbolicTuple t : l){
-			if(doClone){
-				t = t.cloneWithColumnSchemas(); 
-			}
-			
-			boolean merged = false;
-			for(SymbolicTuple t1 : uniqTuples){
-				if(t.canBeMerged(t1)){
-					merged = true; 
-					t1.merge(t); 
-					for(int i=0; i<t.arity(); i++){
-						replaceVariableV1WithV2(t.getColumn(i), t1.getColumn(i)); 
-					}
-					break; 
-				}
-			}
-			if(merged == false){
-				uniqTuples.add(t); 
-			}
-		}
-		
-		SymbolicTuple[] uniq = new SymbolicTuple[uniqTuples.size()];
-		for(int i=0; i<uniqTuples.size(); i++){
-			uniq[i] = uniqTuples.get(i); 
-		}
-		return uniq; 
-	}
-
-	@Override
-	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
-		
-		List<SymbolicTuple> atomicAdds = new ArrayList<SymbolicTuple>();
-		
-		SymbolicTuple[] lefts  = leftsOrRights(true, tuples);
-		SymbolicTuple[] rights = leftsOrRights(false, tuples);
-		
-		atomicAdds.addAll(o1.translateToAtomicAdds(lefts));
-		atomicAdds.addAll(o2.translateToAtomicAdds(rights));
-		
-		return atomicAdds; 
-		
-	}
-
-	@Override
-	public List<SymbolicTuple> resultOf(List<SymbolicTuple> tuples) {
-		List<SymbolicTuple> result1 = o1.resultOf(tuples); 
-		System.out.println(result1.get(0).underlyingSchema());
-		
-		List<SymbolicTuple> result2 = o2.resultOf(tuples); 
-		System.out.println(result2.get(0).underlyingSchema());
-		
-		return cartesianProduct(result1, result2); 
-	}
-
+	
 	
 }

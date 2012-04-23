@@ -7,11 +7,12 @@ import java.util.List;
 import schema.ColumnSchema;
 import schema.RelationSchema;
 
-public class SymbolicTuple {
+public class SymbolicTuple implements Tuple {
+	
 	private Variable[] variables; 
 	protected RelationSchema underlyingSchema; 
 	
-	public SymbolicTuple(RelationSchema underlyingSchema){
+	public SymbolicTuple (RelationSchema underlyingSchema) {
 		this.underlyingSchema = underlyingSchema; 
 		this.variables = new Variable[underlyingSchema.size()]; 
 	}
@@ -29,10 +30,6 @@ public class SymbolicTuple {
 		return t; 
 	}
 	
-	public void setColumn(int columnIndex, Variable v) {
-		variables[columnIndex] = v; 
-		v.addColumnSchema(underlyingSchema.getAttribute(columnIndex)); 
-	}
 
 
 	public void setColumn(String columnName, Variable v){
@@ -47,9 +44,6 @@ public class SymbolicTuple {
 	}
 	
 	public Variable getColumn(String columnName){
-		//System.out.println("getColumn:: columnName: " + columnName); 
-		//System.out.println("underlyingSchema: " + underlyingSchema.toString()); 
-		
 		return getColumn(underlyingSchema.getAttributeIndex(columnName)); 
 	}
 	
@@ -190,7 +184,33 @@ public class SymbolicTuple {
 		}
 		
 	}
+
+
+	@Override
+	public void setColumn(int columnIndex, CellValue v) {
+		if(v instanceof Variable){
+			variables[columnIndex] = (Variable) v; 
+			((Variable)v).addColumnSchema(underlyingSchema.getAttribute(columnIndex)); 
+		}else{
+			throw new RuntimeException("Cellvalue must be of type Variable - not " + v.getClass()); 
+		}
+		
+	}
 	
+	@Override
+	public Tuple reconstructForNewSchema(RelationSchema newSchema){
+		SymbolicTuple tupleRenamed = SymbolicTuple.constructTupleWithNewVariables(newSchema);
+		for(int i=0; i<this.arity(); i++){
+			tupleRenamed.setColumn(i, this.getColumn(i)); 
+		}
+		return tupleRenamed; 
+	}
+
+
+	@Override
+	public Tuple constructNewTupleWithSchema(RelationSchema schema) {
+		return new SymbolicTuple(schema); 
+	}
 	
 	
 }

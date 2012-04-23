@@ -1,7 +1,6 @@
 package constraints;
 
 public class Range {
-	
 	double min;
 	double max;
 	boolean minInclusive;

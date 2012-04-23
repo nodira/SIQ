@@ -10,6 +10,7 @@ import edu.washington.db.cqms.snipsuggest.features.F_SubqueryInWhere;
 import edu.washington.db.cqms.snipsuggest.features.F_TableInFrom;
 import edu.washington.db.cqms.snipsuggest.features.QueryFeature;
 import query.QuerySession;
+import realdb.GeneralDB;
 import schema.DBSchema;
 import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicRelation;
@@ -17,20 +18,15 @@ import symbolicdb.SymbolicRelation;
 
 public class QueryPlan {
 	QueryOperator rootOperator;
-	SymbolicDB db; 
+	GeneralDB db; 
 	
-	public QueryPlan(SymbolicDB db){
+	public QueryPlan(GeneralDB db){
 		this.db = db; 
 	}
 	
 	public QueryPlan(QueryOperator root, SymbolicDB db){
 		this.rootOperator = root; 	
 		this.db = db; 
-	}
-	
-	public void setDB(SymbolicDB db){
-		this.db = db;
-		rootOperator.update(false); 
 	}
 	
 	public void setRoot(QueryOperator root){
@@ -41,13 +37,17 @@ public class QueryPlan {
 		return rootOperator; 
 	}
 	
-	public SymbolicDB db(){
+	public GeneralDB db(){
 		return db; 
 	}
+	
 	
 	public static QueryPlan constructQueryPlan(QuerySession qs){
 		DBSchema schema = qs.getSchema(); 
 		SymbolicDB db = new SymbolicDB(schema); 
+		return constructQueryPlan(qs, db); 
+	}
+	public static QueryPlan constructQueryPlan(QuerySession qs, GeneralDB db){
 		
 		QueryPlan qp = new QueryPlan(db); 
 		QueryOperator lastOp = null;

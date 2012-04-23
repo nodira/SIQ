@@ -4,11 +4,11 @@ import java.util.List;
 
 import schema.RelationSchema;
 import symbolicdb.SymbolicTuple;
+import symbolicdb.Tuple;
 import symbolicdb.Variable;
 
 
 public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
-	
 	List<Integer> selectedColumns; 
 	
 	public ProjectOperator(QueryOperator underlyingOperator, List<Integer> selectedColumns, QueryPlan queryPlan){
@@ -19,8 +19,6 @@ public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
 		for(Integer selectedColumn: selectedColumns){
 			this.currentSchema.addAttribute(underlyingOperator.currentSchema.getAttribute(selectedColumn).columnName()); 
 		}
-		
-		
 	}
 
 	@Override
@@ -30,16 +28,45 @@ public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
 		
 	}
 	
-	public List<SymbolicTuple> applyOperator(List<SymbolicTuple> tuples){
-		List<SymbolicTuple> result = new ArrayList<SymbolicTuple>();
-		for(SymbolicTuple t : tuples){
-			SymbolicTuple projectedT = new SymbolicTuple(currentSchema); 
+	@Override
+	public List<Tuple> applyOperator(List<Tuple> tuples){
+		List<Tuple> result = new ArrayList<Tuple>();
+		for(Tuple t : tuples){
+			Tuple projectedT = t.constructNewTupleWithSchema(currentSchema);  
 			for(int i=0; i<selectedColumns.size(); i++){
 				projectedT.setColumn(i, t.getColumn(selectedColumns.get(i))); 
 			}
 			result.add(projectedT); 
 		}	
 		return result; 
+	}
+	
+	public String selectedColumnsString(){
+		StringBuilder sb = new StringBuilder();
+		for(int i=0; i<currentSchema.size(); i++){
+			sb.append(currentSchema.getAttribute(i) + ", "); 
+		}
+		
+		if(sb.length() > 0){
+			sb.delete(sb.length() - 2, sb.length()); 
+		}
+		return sb.toString(); 
+	}
+	
+	//-------------- specific to SymbolicDB ----------------
+	
+	@Override
+	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
+		localVariableRenaming(v1, v2); 
+		underlyingOperator.replaceVariableV1WithV2(v1, v2); 
+	}
+	
+
+
+	@Override
+	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
+		SymbolicTuple[] requests = unprojected(tuples); 
+		return underlyingOperator.translateToAtomicAdds(requests); 
 	}
 	
 	private SymbolicTuple[] unprojected(SymbolicTuple[] tuples){
@@ -63,30 +90,6 @@ public class ProjectOperator extends QueryOperator.UnaryQueryOperator{
 		}
 		
 		return unprojected; 
-	}
-
-	@Override
-	public void replaceVariableV1WithV2(Variable v1, Variable v2) {
-		localVariableRenaming(v1, v2); 
-		underlyingOperator.replaceVariableV1WithV2(v1, v2); 
-	}
-	
-	public String selectedColumnsString(){
-		StringBuilder sb = new StringBuilder();
-		for(int i=0; i<currentSchema.size(); i++){
-			sb.append(currentSchema.getAttribute(i) + ", "); 
-		}
-		
-		if(sb.length() > 0){
-			sb.delete(sb.length() - 2, sb.length()); 
-		}
-		return sb.toString(); 
-	}
-
-	@Override
-	public List<SymbolicTuple> translateToAtomicAdds(SymbolicTuple... tuples) {
-		SymbolicTuple[] requests = unprojected(tuples); 
-		return underlyingOperator.translateToAtomicAdds(requests); 
 	}
 
 	
