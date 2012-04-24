@@ -38,7 +38,6 @@ public abstract class  QueryOperator  {
 			sb.append(t.toString() + "\n"); 
 		}
 		return sb.toString(); 
-		
 	}
 	
 	public RelationSchema schema(){

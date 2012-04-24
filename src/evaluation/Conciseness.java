@@ -9,7 +9,7 @@ import queryplan.TableOperator;
 import symbolicdb.SymbolicTuple;
 import symbolicdb.Variable;
 
-public class Conciseness implements QualityMetric{
+public class Conciseness extends QualityMetric{
 
 	public Conciseness(){
 	}

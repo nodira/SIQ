@@ -1,6 +1,8 @@
 package queryplan;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import edu.washington.db.cqms.snipsuggest.features.F_AggregateInSelect;
 import edu.washington.db.cqms.snipsuggest.features.F_ColumnInGroupBy;
@@ -10,6 +12,8 @@ import edu.washington.db.cqms.snipsuggest.features.F_SubqueryInWhere;
 import edu.washington.db.cqms.snipsuggest.features.F_TableInFrom;
 import edu.washington.db.cqms.snipsuggest.features.QueryFeature;
 import query.QuerySession;
+import queryplan.QueryOperator.BinaryQueryOperator;
+import queryplan.QueryOperator.UnaryQueryOperator;
 import realdb.GeneralDB;
 import schema.DBSchema;
 import symbolicdb.SymbolicDB;
@@ -47,8 +51,8 @@ public class QueryPlan {
 		SymbolicDB db = new SymbolicDB(schema); 
 		return constructQueryPlan(qs, db); 
 	}
+	
 	public static QueryPlan constructQueryPlan(QuerySession qs, GeneralDB db){
-		
 		QueryPlan qp = new QueryPlan(db); 
 		QueryOperator lastOp = null;
 		
@@ -94,7 +98,37 @@ public class QueryPlan {
 		}
 		
 		qp.setRoot(lastOp);
+		lastOp.update(false); 
 		return qp; 
+	}
+	
+	public String debugString(){
+		
+		StringBuilder sb = new StringBuilder(); 
+		
+		Queue<QueryOperator> ops = new LinkedList<QueryOperator>();
+		ops.add(rootOperator);
+		
+		while(ops.isEmpty() == false){
+			QueryOperator op = ops.poll();
+			
+			sb.append(op.getClass().getCanonicalName() + "\n"); 
+			sb.append(op.intermediateResultsString() + "\n");
+			
+			if(op instanceof UnaryQueryOperator){
+				ops.add(((UnaryQueryOperator) op).underlyingOperator());
+			}else if(op instanceof BinaryQueryOperator){
+				ops.add(((BinaryQueryOperator) op).op1());
+				ops.add(((BinaryQueryOperator) op).op2());
+			}
+			
+		}
+		
+		return sb.toString(); 
+		
+		
+		
+		
 	}
 	
 }

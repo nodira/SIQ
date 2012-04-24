@@ -331,6 +331,11 @@ public class SymbolicDB implements GeneralDB {
 		
 		return true; 
 	}
+
+	@Override
+	public DBSchema getSchema() {
+		return schema; 
+	}
 	
 	
 }

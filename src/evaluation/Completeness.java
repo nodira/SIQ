@@ -14,7 +14,7 @@ import symbolicdb.SymbolicDB;
 import symbolicdb.SymbolicTuple;
 import symbolicdb.Variable;
 
-public class Completeness implements QualityMetric {
+public class Completeness extends QualityMetric {
 	public Completeness(){
 		
 	}

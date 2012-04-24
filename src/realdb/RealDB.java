@@ -103,6 +103,11 @@ public class RealDB implements GeneralDB{
 		
 		return db; 
 	}
+
+	@Override
+	public DBSchema getSchema() {
+		return schema; 
+	}
 	
 	
 }

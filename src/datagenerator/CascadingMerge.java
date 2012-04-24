@@ -1,5 +1,7 @@
 package datagenerator;
 
+import java.util.List;
+
 import query.QuerySession;
 import queryplan.QueryPlan;
 import realdb.RealDB;
@@ -12,6 +14,13 @@ public class CascadingMerge {
 	
 	public CascadingMerge(QuerySession... querySessions){
 		this.querySessions = querySessions; 
+	}
+	
+	public CascadingMerge(List<QuerySession> querySessions){
+		this.querySessions = new QuerySession[querySessions.size()];
+		for(int i=0; i<querySessions.size(); i++){
+			this.querySessions[i] = querySessions.get(i);
+		}
 	}
 	
 	public SymbolicDB mergedDB(){

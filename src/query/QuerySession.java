@@ -28,8 +28,8 @@ public class QuerySession {
 		return steps.size(); 
 	}
 	
-	public void addSnippets(ArrayList<QueryFeature> snippets){
-		steps.add(snippets); 
+	public void addSnippets(List<QueryFeature> list){
+		steps.add(list); 
 	}
 	
 	public String getId(){
@@ -121,13 +121,18 @@ public class QuerySession {
 		
 		
 		return SELECT + "\n" + FROM + "\n" + WHERE + "\n" + GROUPBY; 
-		
-		
-		
-		
-		
-		
-		
+
 	}	
-	
+
+	public QuerySession cut(int k){
+		QuerySession clone = new QuerySession(this.querySessionId + "_cut" + k, this.schema);
+		
+		for(int i=0; i<k; i++){
+			clone.addSnippets(this.steps.get(i)); 
+			
+		}
+		
+		return clone; 
+		
+	}
 }

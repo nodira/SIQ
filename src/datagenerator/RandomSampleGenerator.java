@@ -6,7 +6,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedList;
+import java.util.List;
 
+import query.QuerySession;
+import queryplan.QueryPlan;
 import realdb.RealDB;
 import realdb.RealTuple;
 import realdb.RealValue.StringValue;
@@ -30,15 +33,18 @@ import schema.RelationSchema;
  * @author nodira
  *
  */
-public class RandomSampleGenerator {
-	int k; 
+public class RandomSampleGenerator implements SampleGenerationAlgorithm{
+	int k = 2;
+	
+	public RandomSampleGenerator(){}
 	
 	public RandomSampleGenerator(int k){
 		this.k = k; 
 	}
 	
 	public RealDB makeRandomSample(DBSchema schema){
-		String sql = sqlString(schema); 
+		String sql = //sqlString(schema); 
+			"select * from FullJoin10k order by random() limit " + k + ";"; 
 		
 		System.out.println("SQL: \n " + sql); 
 		
@@ -121,5 +127,11 @@ public class RandomSampleGenerator {
 		 * RANDOM TUPLES FROM THAT? JUST NEED A BIT OF COLUMN_RENAMING. 
 		 * 
 		 */
+	}
+
+	@Override
+	public RealDB generateSample(List<QuerySession> querySessions) {
+		DBSchema schema = querySessions.get(0).getSchema();
+		return makeRandomSample(schema); 
 	}
 }
